@@ -38,7 +38,7 @@ if __name__ == "__main__":
     processed_articles = []
     for item in news_data.get("items", []):
          pub_date_obj = pendulum.from_format(item.get("pubDate"), 'ddd, DD MMM YYYY HH:mm:ss ZZ', tz='Asia/Seoul')
-        processed_articles.append({
+         processed_articles.append({
             "title": item.get("title", "").replace("<b>", "").replace("</b>", "").replace("&quot;", "\""),
             "originallink": item.get("originallink"),
             "link": item.get("link"),

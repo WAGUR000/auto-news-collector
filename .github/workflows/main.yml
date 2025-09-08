@@ -6,7 +6,7 @@ on:
   push:
     branches: [ "main" ]
   schedule:
-    - cron: '*/20 * * * *' # 한국 시간 오후 6시
+    - cron: '*/20 * * * *' # 
 
 # 실행할 작업
 jobs:
@@ -43,4 +43,4 @@ jobs:
       env:
         NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
         NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
-      run: python your_script_name.py # 실제 스크립트 파일명으로 변경
+      run: python API_GitHub_AWSDB.py # 실제 스크립트 파일명으로 변경
