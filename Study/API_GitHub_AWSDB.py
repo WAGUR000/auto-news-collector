@@ -1,6 +1,11 @@
 import boto3
 import os
 from datetime import datetime
+import requests  # 다른 import 문들과 함께
+from urllib.parse import quote # 다른 import 문들과 함께
+import pendulum  # <-- 이 줄을 추가하세요!
+
+
 
 # GitHub Actions 환경에서는 키를 직접 넣지 않아도 알아서 인증됩니다.
 dynamodb = boto3.resource('dynamodb', region_name='ap-northeast-2')
