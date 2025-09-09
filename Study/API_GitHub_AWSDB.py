@@ -33,7 +33,7 @@ if __name__ == "__main__":
         
     keyword = "뉴스"
     enc_keyword = quote(keyword)
-    url = f"https://openapi.naver.com/v1/search/news.json?query={enc_keyword}&display=10&start=1&sort=date"
+    url = f"https://openapi.naver.com/v1/search/news.json?query={enc_keyword}&display=101&start=1&sort=date"
     headers = {"X-Naver-Client-Id": NAVER_CLIENT_ID, "X-Naver-Client-Secret": NAVER_CLIENT_SECRET}
 
     response = requests.get(url, headers=headers, timeout=10)
