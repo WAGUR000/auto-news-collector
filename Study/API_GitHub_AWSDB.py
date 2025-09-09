@@ -1,15 +1,15 @@
 import boto3
 import os
 from datetime import datetime
-import requests  
+import requests 
 from urllib.parse import quote 
-import pendulum  
+import pendulum 
 
 
 
-
+# GitHub Actions 환경에서는 키를 직접 넣지 않아도 알아서 인증됩니다.
 dynamodb = boto3.resource('dynamodb', region_name='ap-northeast-2')
-table = dynamodb.Table('News_Data_DB') 
+table = dynamodb.Table('News_Data_DB') # 실제 테이블 이름으로 변경
 
 def save_data(articles_list):
     """DynamoDB의 BatchWriter를 사용해 여러 항목을 한번에 효율적으로 저장합니다."""
@@ -45,8 +45,8 @@ if __name__ == "__main__":
          pub_date_obj = pendulum.from_format(item.get("pubDate"), 'ddd, DD MMM YYYY HH:mm:ss ZZ', tz='Asia/Seoul')
          processed_articles.append({
             "title": item.get("title", "").replace("<b>", "").replace("</b>", "").replace("&quot;", "\""),
-            "News": item.get("originallink"),
-            "link": item.get("link"),
+            "originallink": item.get("originallink"),
+            "News": item.get("link"),
             "description": item.get("description", "").replace("<b>", "").replace("</b>", "").replace("&quot;", "\""),
             "pub_date": pub_date_obj.to_iso8601_string()
         })
