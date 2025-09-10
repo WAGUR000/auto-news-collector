@@ -21,7 +21,7 @@ dynamodb = boto3.resource(
 )
 
 # 테이블 이름 지정
-table_name = 'News_Data_DBE'
+table_name = 'News_Data_DB'
 table = dynamodb.Table(table_name)
 
 
