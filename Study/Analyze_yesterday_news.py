@@ -24,16 +24,20 @@ dynamodb = boto3.resource(
 table_name = 'News_Data_DBE'
 table = dynamodb.Table(table_name)
 
-# 예시: 특정 날짜의 뉴스 데이터 조회
-def get_news_by_date(date):
-    response = table.query(
-        KeyConditionExpression=Key('date').eq(date)
-    )
-    return response.get('Items', [])
 
-# 사용 예시
+def get_yesterday_news():
+    # 어제 날짜 구하기 (YYYY-MM-DD)
+    yesterday = pendulum.now('Asia/Seoul').subtract(days=1).to_date_string()
+    # pub_date가 어제 날짜로 시작하는 뉴스만 필터링
+    response = table.scan()
+    items = response.get('Items', [])
+    yesterday_news = [
+        item for item in items
+        if item.get('pub_date', '').startswith(yesterday)
+    ]
+    return yesterday_news
+
 if __name__ == "__main__":
-    yesterday = '2025-09-09'  # 예시 날짜
-    news_items = get_news_by_date(yesterday)
+    news_items = get_yesterday_news()
     for item in news_items:
         print(item)
