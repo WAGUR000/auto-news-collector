@@ -33,7 +33,7 @@ def get_news_by_date(date):
 
 # 사용 예시
 if __name__ == "__main__":
-    yesterday = '2024-09-09'  # 예시 날짜
+    yesterday = '2025-09-09'  # 예시 날짜
     news_items = get_news_by_date(yesterday)
     for item in news_items:
         print(item)
