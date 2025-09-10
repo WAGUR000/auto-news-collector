@@ -12,7 +12,9 @@
 
 2025-09-10 오후 3:53 = 해당 Actions를 트리거로 하는 lambda 함수를 작성해서 테스트 작업 Layer 설치시 Linux 기반으로 변경, TypeDeserializer() 으로 변경,  DynamoDB에 반영되지 않아서 확인
 
-2025-09-10 오후 4:37 = 해당 Actions를 트리거로 하는 lambda 함수를 작성해서 테스트 작업 환경변수 TABLE_NAME value값에 오입력된 공백 제거, 로그를 통한 API 회신 확인
+2025-09-10 오후 4:37 = 해당 Actions를 트리거로 하는 lambda 함수를 작성해서 테스트 작업 환경변수 TABLE_NAME value값에 오입력된 공백 제거, 로그를 통한 API 회신 확인, Free Tier 호출 제한 발생
+
+2025-09-10 오후 4:51 = 해당 Actions를 트리거로 하는 lambda 함수를 작성해서 테스트 작업 time.sleep(1)을 적용하여 분당 요청수 제한을 넘지 않도록 설정
 
 요약 : Python, GitHub Actions와 Amazion Free tier일때 사용하기 적합한 DynamoDB, 네이버 검색 API를 이용한 간단한 뉴스 수집도구
 
