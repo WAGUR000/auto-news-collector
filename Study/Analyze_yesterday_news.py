@@ -1,5 +1,11 @@
-import boto3
 from boto3.dynamodb.conditions import Key
+import boto3
+import os
+from datetime import datetime
+import requests 
+from urllib.parse import quote 
+import pendulum 
+
 
 # AWS 자격 증명 및 리전 설정
 aws_access_key_id = os.environ.get('AWS_ACCESS_KEY_ID')
