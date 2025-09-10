@@ -3,6 +3,8 @@ name: Analyze yesterday News
 
 # 실행 조건: main 브랜치에 코드가 푸시되거나, 매일 오전 9시(UTC)에 자동 실행
 on:
+  push:
+    branches: [ "main" ]
   schedule:
     - cron: '0 0 * * *' # 
 
