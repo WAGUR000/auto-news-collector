@@ -31,7 +31,7 @@ if __name__ == "__main__":
     NAVER_CLIENT_SECRET = os.environ.get("NAVER_CLIENT_SECRET")
 
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-flash') # Gemini 모델을 'gemini-1.5-flash'로 변경, 더 긴 텍스트와 빠른 처리에 유리합니다.
+    model = genai.GenerativeModel('gemini-2.5-flash') # Gemini 모델을 'gemini-1.5-flash'로 변경, 더 긴 텍스트와 빠른 처리에 유리합니다.
 
     # 1. 네이버 뉴스 API 호출
     keyword = "뉴스"
