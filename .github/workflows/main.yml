@@ -1,7 +1,7 @@
 # 워크플로우 이름
 name: API News and Save to DynamoDB
 
-# 실행 조건: main 브랜치에 코드가 푸시되거나, 매일 오전 9시(UTC)에 자동 실행
+
 on:
   push:
     branches: [ "main" ]

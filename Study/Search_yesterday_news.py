@@ -36,8 +36,3 @@ def get_yesterday_news():
         if item.get('pub_date', '').startswith(yesterday)
     ]
     return yesterday_news
-
-if __name__ == "__main__":
-    news_items = get_yesterday_news()
-    for item in news_items:
-        print(item)

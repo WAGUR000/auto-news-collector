@@ -1,7 +1,7 @@
 # 워크플로우 이름
 name: Analyze yesterday News
 
-# 실행 조건: main 브랜치에 코드가 푸시되거나, 매일 오전 9시(UTC)에 자동 실행
+
 on:
   #push:
     #branches: [ "main" ]
@@ -65,4 +65,4 @@ jobs:
       env:
         NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
         NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
-      run: python Analyze_yesterday_news.py # 실제 스크립트 파일명으로 변경
+      run: python Analyze_news.py # 실제 스크립트 파일명으로 변경
