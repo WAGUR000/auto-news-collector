@@ -72,7 +72,7 @@ if __name__ == "__main__":
         
         prompt = (
             f"""아래는 뉴스 기사 목록입니다. 각 기사에 대해 `temp_id`, 주요 토픽, 감정, 대분류, 소분류, 중요도를 추출해 JSON 리스트로 반환하세요.
-            반드시 입력된 `temp_id`를 그대로 유지해야 합니다.
+            반드시 입력된 `temp_id`를 그대로 유지해야 하고, 아래의 출력 형식에 맞추어 response 해주세요.
             
             입력:
             {json.dumps(articles_for_prompt, ensure_ascii=False, indent=2)}
@@ -117,8 +117,8 @@ if __name__ == "__main__":
                         "pub_date": pub_date_obj.to_iso8601_string(),
                         "topic": gemini_info.get("topic"),
                         "sentiment": gemini_info.get("sentiment"),
-                        "category1": gemini_info.get("category1"),
-                        "category2": gemini_info.get("category2"),
+                        "sub_category": gemini_info.get("category2"),
+                        "main_category": gemini_info.get("category1"),
                         "importance": gemini_info.get("importance")
                     })
 
