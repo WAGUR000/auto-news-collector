@@ -66,3 +66,12 @@ jobs:
         NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
         NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
       run: python Analyze_news.py # 실제 스크립트 파일명으로 변경
+
+      # 속성 제거용 임시 스크립트 이후 삭제 예정
+    - name: Run Python temp script
+      working-directory: ./Study  
+      env:
+        NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+        NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      run: python delete_col.py # 실제 스크립트 파일명으로 변경
