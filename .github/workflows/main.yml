@@ -64,4 +64,5 @@ jobs:
       env:
         NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
         NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       run: python API_GitHub_AWSDB.py # 실제 스크립트 파일명으로 변경
