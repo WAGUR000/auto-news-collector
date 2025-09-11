@@ -59,20 +59,20 @@ jobs:
         aws dynamodb describe-table --table-name News_Data_DB > /dev/null
 
 
-              # 속성 제거용 임시 스크립트 이후 삭제 예정
-    - name: Run Python temp script
+    # 속성 제거용 임시 스크립트 이후 삭제 예정
+    #- name: Run Python temp script
+      #working-directory: ./Study  
+      #env:
+      #  NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+      #  NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+      #  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+     # run: python delete_col.py # 실제 스크립트 파일명으로 변경
+
+    # 5. 최종 파이썬 스크립트를 실행합니다. 
+    - name: Run Python script
       working-directory: ./Study  
       env:
         NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
         NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      run: python delete_col.py # 실제 스크립트 파일명으로 변경
-
-    # 5. 최종 파이썬 스크립트를 실행합니다. (Naver API 키도 Secrets에서 가져와 환경 변수로 주입)
-    #- name: Run Python script
-    #  working-directory: ./Study  # <-- 이 줄을 추가합니다.
-    #  env:
-    #    NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
-    #    NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
-    #    GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-    #  run: python API_GitHub_AWSDB.py # 실제 스크립트 파일명으로 변경
+      run: python API_GitHub_AWSDB.py # 실제 스크립트 파일명으로 변경
