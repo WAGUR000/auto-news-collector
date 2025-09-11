@@ -110,7 +110,7 @@ if __name__ == "__main__":
                     
                     # 최종 DynamoDB 저장용 데이터 생성
                     processed_articles_for_db.append({
-                        "link": item.get("link"), # primary key로 사용할 'link'
+                        "News": item.get("link"), # primary key로 사용할 'link'
                         "title": item.get("title", "").replace("<b>", "").replace("</b>", "").replace("&quot;", "\""),
                         "originallink": item.get("originallink"),
                         "description": item.get("description", "").replace("<b>", "").replace("</b>", "").replace("&quot;", "\""),
