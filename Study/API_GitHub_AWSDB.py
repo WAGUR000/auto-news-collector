@@ -8,7 +8,7 @@ import json
 
 # GitHub Actions 환경에서는 키를 직접 넣지 않아도 알아서 인증됩니다.
 dynamodb = boto3.resource('dynamodb', region_name='ap-northeast-2')
-table = dynamodb.Table('News_Data_DB') # 실제 테이블 이름으로 변경
+table = dynamodb.Table('News_Data_v1') # 실제 테이블 이름으로 변경
 
 def save_data(articles_list):
     """DynamoDB의 BatchWriter를 사용해 여러 항목을 한번에 효율적으로 저장합니다."""
@@ -108,18 +108,29 @@ if __name__ == "__main__":
                     
                     pub_date_obj = pendulum.from_format(item.get("pubDate"), 'ddd, DD MMM YYYY HH:mm:ss ZZ', tz='Asia/Seoul')
                     
+        
+                    pub_date_str1 = pub_date_obj.format('YYYY-MM-DD')
+                    link = item.get("link")
+
+                    partition_key = pub_date_str1
+                    sort_key = f"{pub_date_obj.to_iso8601_string()}#{link}"
+
+
+
+
                     # 최종 DynamoDB 저장용 데이터 생성
                     processed_articles_for_db.append({
-                        "News": item.get("link"), # primary key로 사용할 'link'
+                        "PK": partition_key, # 파티션 키. 날짜(YYYY-MM-DD)
+                        "SK": sort_key, # 정렬 키. ISO 8601 형식의 날짜 + 링크 (유일성 보장)
                         "title": item.get("title", "").replace("<b>", "").replace("</b>", "").replace("&quot;", "\""),
-                        "originallink": item.get("originallink"),
+                        "topic": gemini_info.get("topic"),
+                        "importance": gemini_info.get("importance"),
+                        "sentiment": gemini_info.get("sentiment"),
+                        "main_category": gemini_info.get("category1"),
+                        "sub_category": gemini_info.get("category2"),
                         "description": item.get("description", "").replace("<b>", "").replace("</b>", "").replace("&quot;", "\""),
                         "pub_date": pub_date_obj.to_iso8601_string(),
-                        "topic": gemini_info.get("topic"),
-                        "sentiment": gemini_info.get("sentiment"),
-                        "sub_category": gemini_info.get("category2"),
-                        "main_category": gemini_info.get("category1"),
-                        "importance": gemini_info.get("importance")
+                        "originallink": item.get("originallink") # 네이버 뉴스링크가 아닌, 뉴스 제공처의 원본 링크
                     })
 
         except Exception as e:
