@@ -56,7 +56,7 @@ jobs:
       # aws cli 명령어로 테이블 정보를 읽어봅니다.
       # 이 명령이 성공하면, 자격 증명(credentials)이 유효하고 테이블에 접근 가능하다는 의미입니다.
       run: |
-        aws dynamodb describe-table --table-name News_Data_DB > /dev/null
+        aws dynamodb describe-table --table-name News_Data_v1 > /dev/null
 
 
     # 속성 제거용 임시 스크립트 이후 삭제 예정
