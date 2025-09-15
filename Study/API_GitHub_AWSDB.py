@@ -5,10 +5,17 @@ import pendulum
 import google.generativeai as genai
 from urllib.parse import quote
 import json
+import argparse
+from dotenv import load_dotenv
+
+# --- 설정값 ---
+DYNAMODB_TABLE_NAME = 'News_Data_v1'
+GEMINI_MODEL_NAME = 'gemini-2.5-flash'
+AWS_REGION = 'ap-northeast-2'
 
 # GitHub Actions 환경에서는 키를 직접 넣지 않아도 알아서 인증됩니다.
-dynamodb = boto3.resource('dynamodb', region_name='ap-northeast-2')
-table = dynamodb.Table('News_Data_v1') # 실제 테이블 이름으로 변경
+dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
+table = dynamodb.Table(DYNAMODB_TABLE_NAME)
 
 def save_data(articles_list):
     """DynamoDB의 BatchWriter를 사용해 여러 항목을 한번에 효율적으로 저장합니다."""
@@ -25,18 +32,36 @@ def chunked(iterable, n):
     for i in range(0, len(iterable), n):
         yield iterable[i:i + n]
 
-if __name__ == "__main__":
+def main(is_test_mode=False):
+    """뉴스 데이터를 수집, 분석하고 DynamoDB에 저장하는 메인 함수"""
+    # 로컬 환경의 .env 파일에서 환경 변수를 불러옵니다.
+    # GitHub Actions 환경에서는 .env 파일이 없으므로 이 코드는 무시됩니다.
+    load_dotenv()
+
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
     NAVER_CLIENT_ID = os.environ.get("NAVER_CLIENT_ID")
     NAVER_CLIENT_SECRET = os.environ.get("NAVER_CLIENT_SECRET")
 
+    if not all([GEMINI_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET]):
+        print("에러: 필요한 환경변수(GEMINI_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET)가 설정되지 않았습니다.")
+        exit(1)
+
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-2.5-flash') #
+    model = genai.GenerativeModel(GEMINI_MODEL_NAME)
+
+    # 테스트 모드일 경우 API 호출량과 배치 크기를 줄입니다.
+    if is_test_mode:
+        print("--- 🧪 테스트 모드로 실행합니다. (display=2, batch_size=2) ---")
+        display_count = 2
+        batch_size = 2
+    else:
+        display_count = 100
+        batch_size = 10
 
     # 1. 네이버 뉴스 API 호출
     keyword = "뉴스"
     enc_keyword = quote(keyword)
-    url = f"https://openapi.naver.com/v1/search/news.json?query={enc_keyword}&display=100&start=1&sort=date"
+    url = f"https://openapi.naver.com/v1/search/news.json?query={enc_keyword}&display={display_count}&start=1&sort=date"
     headers = {"X-Naver-Client-Id": NAVER_CLIENT_ID, "X-Naver-Client-Secret": NAVER_CLIENT_SECRET}
 
     try:
@@ -46,7 +71,7 @@ if __name__ == "__main__":
         raw_articles = news_data.get("items", [])
     except requests.exceptions.RequestException as e:
         print(f"네이버 뉴스 API 호출 중 에러 발생: {e}")
-        exit()
+        exit(1)
 
     # 2. 임시 라벨 추가 및 데이터 준비
     labeled_articles = []
@@ -58,7 +83,6 @@ if __name__ == "__main__":
     processed_articles_for_db = []
 
     # 3. 뉴스 기사를 배치로 처리하며 Gemini API 호출
-    batch_size = 10 # 한 번에 처리할 기사 수. 토큰 수에 따라 조정 가능
     for batch in chunked(labeled_articles, batch_size):
         # API에 보낼 기사 목록을 간결하게 만듭니다.
         articles_for_prompt = [
@@ -104,9 +128,14 @@ if __name__ == "__main__":
         try:
             response = model.generate_content(prompt)
             json_str = response.text.strip('`').strip('json').strip()
-            # 응답에서 JSON 파싱
-            gemini_result = json.loads(json_str)
-
+            
+            try:
+                # 응답에서 JSON 파싱
+                gemini_result = json.loads(json_str)
+            except json.JSONDecodeError as e:
+                print(f"Gemini 응답 JSON 파싱 에러: {e}")
+                print(f"원본 응답 텍스트: {json_str}")
+                continue # 파싱 실패 시 다음 배치로 넘어감
             # 4. Gemini API 응답과 원본 데이터 결합
             gemini_map = {item['temp_id']: item for item in gemini_result}
             
@@ -161,3 +190,13 @@ if __name__ == "__main__":
         save_data(processed_articles_for_db)
     else:
         print("처리할 기사가 없습니다.")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="뉴스 데이터를 수집하고 분석하여 DynamoDB에 저장합니다.")
+    parser.add_argument(
+        '--test', 
+        action='store_true', 
+        help='스크립트를 테스트 모드로 실행합니다. (2개 기사만 처리)'
+    )
+    args = parser.parse_args()
+    main(is_test_mode=args.test)

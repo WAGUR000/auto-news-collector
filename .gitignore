@@ -1,0 +1,16 @@
+# 민감한 정보를 담고 있는 환경 변수 파일
+.env
+
+# 파이썬 가상환경 폴더
+venv/
+.venv/
+
+# 파이썬 캐시 파일 및 폴더
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE 및 에디터 설정 파일 (VSCode, PyCharm 등)
+.vscode/
+.idea/

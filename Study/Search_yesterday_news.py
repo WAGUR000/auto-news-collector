@@ -1,38 +1,26 @@
 from boto3.dynamodb.conditions import Key
 import boto3
-import os
-from datetime import datetime
-import requests 
-from urllib.parse import quote 
 import pendulum 
 
+# --- 설정값 ---
+AWS_REGION = 'ap-northeast-2'
+DYNAMODB_TABLE_NAME = 'News_Data_v1'
 
-# AWS 자격 증명 및 리전 설정
-aws_access_key_id = os.environ.get('AWS_ACCESS_KEY_ID')
-aws_secret_access_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
-region_name = 'ap-northeast-2'  # 예시: 서울 리전
+# boto3가 환경에 따라 (GitHub Actions, 로컬 환경변수 등) 자동으로 자격 증명을 찾습니다.
+dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
 
-# DynamoDB 리소스 생성
-dynamodb = boto3.resource(
-    'dynamodb',
-    aws_access_key_id=aws_access_key_id,
-    aws_secret_access_key=aws_secret_access_key,
-    region_name=region_name
-)
-
-# 테이블 이름 지정
-table_name = 'News_Data_DB'
-table = dynamodb.Table(table_name)
+# 테이블 객체 생성
+table = dynamodb.Table(DYNAMODB_TABLE_NAME)
 
 
 def get_yesterday_news():
     # 어제 날짜 구하기 (YYYY-MM-DD)
-    yesterday = pendulum.now('Asia/Seoul').subtract(days=1).to_date_string()
-    # pub_date가 어제 날짜로 시작하는 뉴스만 필터링
-    response = table.scan()
+    yesterday_str = pendulum.now('Asia/Seoul').subtract(days=1).to_date_string()
+    
+    # scan 대신 query를 사용하여 특정 파티션 키(어제 날짜)의 데이터만 효율적으로 조회합니다.
+    response = table.query(
+        KeyConditionExpression=Key('PK').eq(yesterday_str)
+    )
     items = response.get('Items', [])
-    yesterday_news = [
-        item for item in items
-        if item.get('pub_date', '').startswith(yesterday)
-    ]
-    return yesterday_news
+    # TODO: Paginator를 사용하여 1MB 이상의 결과도 모두 가져오도록 개선할 수 있습니다.
+    return items
