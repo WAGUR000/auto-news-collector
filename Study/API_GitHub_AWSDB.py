@@ -94,7 +94,7 @@ if __name__ == "__main__":
                 "sentiment": "긍정/부정/중립",
                 "category1": "대분류",
                 "category2": "소분류",
-                "importance": "1~10 중요도"
+                "importance": 1~10 사이의 정수 (1: 매우 낮음, 10: 매우 높음, int형식)
               }},
               ...
             ]
@@ -114,6 +114,16 @@ if __name__ == "__main__":
                 temp_id = item['temp_id']
                 if temp_id in gemini_map:
                     gemini_info = gemini_map[temp_id]
+
+                    # 중요도를 안전하게 정수형으로 변환합니다.
+                    importance_val = gemini_info.get("importance")
+                    try:
+                        # 문자열로 된 숫자('7')도 처리하기 위해 int()로 변환합니다.
+                        importance = int(importance_val)
+                    except (ValueError, TypeError):
+                        # 변환 실패 시(예: '높음', None) 기본값 5를 사용하고 로그를 남깁니다.
+                        print(f"Warning: 'importance' 값 '{importance_val}'을(를) 정수로 변환할 수 없어 기본값 5를 사용합니다. (temp_id: {temp_id})")
+                        importance = 5
                     
                     pub_date_obj = pendulum.from_format(item.get("pubDate"), 'ddd, DD MMM YYYY HH:mm:ss ZZ', tz='Asia/Seoul')
                     
@@ -133,7 +143,7 @@ if __name__ == "__main__":
                         "SK": sort_key, # 정렬 키. ISO 8601 형식의 날짜 + 링크 (유일성 보장)
                         "title": item.get("title", "").replace("<b>", "").replace("</b>", "").replace("&quot;", "\""),
                         "topic": gemini_info.get("topic"),
-                        "importance": gemini_info.get("importance"),
+                        "importance": importance,
                         "sentiment": gemini_info.get("sentiment"),
                         "main_category": gemini_info.get("category1"),
                         "sub_category": gemini_info.get("category2"),
