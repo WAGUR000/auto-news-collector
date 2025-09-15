@@ -41,7 +41,7 @@ def main(is_test_mode=False):
     # python Study/API_GitHub_AWSDB.py --test (테스트 환경 실행)
 
 
-    load_dotenv()
+    load_dotenv() # .env 파일에서 환경 변수 로드. 없을경우 넘어감
 
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
     NAVER_CLIENT_ID = os.environ.get("NAVER_CLIENT_ID")

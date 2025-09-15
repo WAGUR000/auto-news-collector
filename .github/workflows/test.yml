@@ -1,5 +1,5 @@
 # 워크플로우 이름
-name: API News and Save to DynamoDB
+name: Test_Crawl_and_Save_to_DynamoDB
 
 # [추가] 동시 실행 제어: 이 워크플로우는 한 번에 하나만 실행됩니다.
 concurrency:
@@ -7,8 +7,10 @@ concurrency:
   cancel-in-progress: false
 
 on:
-  schedule:
-    - cron: '*/20 * * * *'
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'Study/**.py'
 
 # 실행할 작업
 jobs:
@@ -60,6 +62,7 @@ jobs:
       run: |
         aws dynamodb describe-table --table-name News_Data_v1 > /dev/null
 
+
     # 5. 최종 파이썬 스크립트를 실행합니다. 
     - name: Run Python script
       working-directory: ./Study  
@@ -67,4 +70,4 @@ jobs:
         NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
         NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      run: python API_GitHub_AWSDB.py # 실제 스크립트 파일명으로 변경
+      run: python API_GitHub_AWSDB.py --test
