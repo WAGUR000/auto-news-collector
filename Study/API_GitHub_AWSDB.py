@@ -36,6 +36,11 @@ def main(is_test_mode=False):
     """뉴스 데이터를 수집, 분석하고 DynamoDB에 저장하는 메인 함수"""
     # 로컬 환경의 .env 파일에서 환경 변수를 불러옵니다.
     # GitHub Actions 환경에서는 .env 파일이 없으므로 이 코드는 무시됩니다.
+    # 로컬 테스트
+    # .\venv\Scripts\activate (CMD, Git Bash로는 불가능)
+    # python Study/API_GitHub_AWSDB.py --test (테스트 환경 실행)
+
+
     load_dotenv()
 
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
