@@ -6,6 +6,7 @@ import google.generativeai as genai
 from urllib.parse import quote, urlparse
 import json
 import argparse
+from decimal import Decimal
 from dotenv import load_dotenv
 from boto3.dynamodb.conditions import Key
 from sentence_transformers import SentenceTransformer, util
@@ -32,7 +33,10 @@ def save_data(articles_list):
     try:
         with table.batch_writer() as batch:
             for item in articles_list:
-                batch.put_item(Item=item)
+                # DynamoDB는 float 타입을 지원하지 않으므로 Decimal로 변환합니다.
+                # json.dumps와 loads를 이용하면 중첩된 구조의 float도 모두 Decimal로 쉽게 변환할 수 있습니다.
+                item_decimal = json.loads(json.dumps(item), parse_float=Decimal)
+                batch.put_item(Item=item_decimal)
         print(f"{len(articles_list)}개의 데이터 저장 성공.")
     except Exception as e:
         print(f"에러 발생: {e}")
