@@ -7,6 +7,7 @@ from urllib.parse import quote
 import json
 import argparse
 from dotenv import load_dotenv
+from news_organization_lists import NEWS_OUTLET_MAP
 
 # --- 설정값 ---
 DYNAMODB_TABLE_NAME = 'News_Data_v1'
@@ -120,7 +121,7 @@ def main(is_test_mode=False):
               {{
                 "temp_id": "article_0",
                 "topic": "주요 토픽",
-                "sentiment": "긍정/부정/중립",
+                "sentiment": 0.0(부정)~5.0(중립)~10.0(긍정) 사이의 실수 (float형식, 소수점 첫째자리까지)",
                 "category1": "대분류",
                 "category2": "소분류",
                 "importance": 1~10 사이의 정수 (1: 매우 낮음, 10: 매우 높음, int형식)
@@ -158,6 +159,16 @@ def main(is_test_mode=False):
                         # 변환 실패 시(예: '높음', None) 기본값 5를 사용하고 로그를 남깁니다.
                         print(f"Warning: 'importance' 값 '{importance_val}'을(를) 정수로 변환할 수 없어 기본값 5를 사용합니다. (temp_id: {temp_id})")
                         importance = 5
+
+                    # 감정을 안전하게 실수형(float)으로 변환합니다.
+                    sentiment_val = gemini_info.get("sentiment")
+                    try:
+                        # 문자열로 된 숫자('7.5')나 정수(5)도 처리하기 위해 float()로 변환합니다.
+                        sentiment = float(sentiment_val)
+                    except (ValueError, TypeError):
+                        # 변환 실패 시(예: '중립', None) 기본값 5.0을 사용하고 로그를 남깁니다.
+                        print(f"Warning: 'sentiment' 값 '{sentiment_val}'을(를) 실수로 변환할 수 없어 기본값 5.0을 사용합니다. (temp_id: {temp_id})")
+                        sentiment = 5.0
                     
                     pub_date_obj = pendulum.from_format(item.get("pubDate"), 'ddd, DD MMM YYYY HH:mm:ss ZZ', tz='Asia/Seoul')
                     
@@ -178,7 +189,7 @@ def main(is_test_mode=False):
                         "title": item.get("title", "").replace("<b>", "").replace("</b>", "").replace("&quot;", "\""),
                         "topic": gemini_info.get("topic"),
                         "importance": importance,
-                        "sentiment": gemini_info.get("sentiment"),
+                        "sentiment": sentiment,
                         "main_category": gemini_info.get("category1"),
                         "sub_category": gemini_info.get("category2"),
                         "description": item.get("description", "").replace("<b>", "").replace("</b>", "").replace("&quot;", "\""),
