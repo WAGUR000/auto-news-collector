@@ -112,12 +112,14 @@ def main(is_test_mode=False):
 
     # 테스트 모드일 경우 API 호출량과 배치 크기를 줄입니다.
     if is_test_mode:
-        print("--- 🧪 테스트 모드로 실행합니다. (display=2, batch_size=2) ---")
+        print("--- 🧪 테스트 모드로 실행합니다. (신규 2개 + 기존 2개) ---")
         display_count = 2
         batch_size = 2
+        recent_articles_limit = 2
     else:
         display_count = 100
         batch_size = 10
+        recent_articles_limit = 100
 
     # 1. 네이버 뉴스 API 호출
     keyword = "뉴스"
@@ -258,9 +260,9 @@ def main(is_test_mode=False):
             print(f"Gemini API 호출 또는 응답 처리 중 에러 발생: {e}")
             continue # 다음 배치로 이동
 
-    # 5. DB에서 최신 기사 100개 가져오기 (군집화 비교 대상)
+    # 5. DB에서 최신 기사 가져오기 (군집화 비교 대상)
     print("--- 💾 DynamoDB에서 군집화 비교를 위한 최신 기사를 가져옵니다. ---")
-    recent_db_articles = get_recent_articles(limit=100)
+    recent_db_articles = get_recent_articles(limit=recent_articles_limit)
     print(f"--- {len(recent_db_articles)}개의 기존 기사를 가져왔습니다. ---")
 
     # 5. 뉴스 군집화 (Clustering)
