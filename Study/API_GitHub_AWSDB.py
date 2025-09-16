@@ -7,16 +7,25 @@ from urllib.parse import quote, urlparse
 import json
 import argparse
 from dotenv import load_dotenv
+from boto3.dynamodb.conditions import Key
+from sentence_transformers import SentenceTransformer, util
+import torch
 from news_organization_lists import NEWS_OUTLET_MAP
 
 # --- 설정값 ---
 DYNAMODB_TABLE_NAME = 'News_Data_v1'
 GEMINI_MODEL_NAME = 'gemini-2.5-flash'
 AWS_REGION = 'ap-northeast-2'
+CLUSTERING_THRESHOLD = 0.85 # 군집화 유사도 임계값 (0.0 ~ 1.0)
 
 # GitHub Actions 환경에서는 키를 직접 넣지 않아도 알아서 인증됩니다.
 dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
 table = dynamodb.Table(DYNAMODB_TABLE_NAME)
+
+# SentenceTransformer 모델 로드 (스크립트 시작 시 한 번만 로드)
+# GPU가 있으면 'cuda', 없으면 'cpu'를 자동으로 사용합니다.
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+sbert_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2', device=device)
 
 def save_data(articles_list):
     """DynamoDB의 BatchWriter를 사용해 여러 항목을 한번에 효율적으로 저장합니다."""
@@ -45,6 +54,34 @@ def get_outlet_name(original_link):
         return NEWS_OUTLET_MAP.get(domain, '기타언론사')
     except Exception:
         return '기타언론사'
+
+def get_recent_articles(limit=100):
+    """DynamoDB에서 최신 기사 'limit'개를 가져옵니다."""
+    try:
+        today_str = pendulum.now('Asia/Seoul').to_date_string()
+        yesterday_str = pendulum.now('Asia/Seoul').subtract(days=1).to_date_string()
+
+        # 오늘 기사 조회 (최신순)
+        response_today = table.query(
+            KeyConditionExpression=Key('PK').eq(today_str),
+            ScanIndexForward=False
+        )
+        items = response_today.get('Items', [])
+
+        # 오늘 기사가 부족하면 어제 기사도 조회
+        if len(items) < limit:
+            response_yesterday = table.query(
+                KeyConditionExpression=Key('PK').eq(yesterday_str),
+                ScanIndexForward=False
+            )
+            items.extend(response_yesterday.get('Items', []))
+
+        # 모든 기사를 SK(시간) 기준으로 최신순 정렬 후 limit만큼 반환
+        items.sort(key=lambda x: x.get('SK', ''), reverse=True)
+        return items[:limit]
+    except Exception as e:
+        print(f"DynamoDB에서 최근 기사를 가져오는 중 에러 발생: {e}")
+        return []
 
 def main(is_test_mode=False):
     """뉴스 데이터를 수집, 분석하고 DynamoDB에 저장하는 메인 함수"""
@@ -216,7 +253,60 @@ def main(is_test_mode=False):
             print(f"Gemini API 호출 또는 응답 처리 중 에러 발생: {e}")
             continue # 다음 배치로 이동
 
-    # 5. 최종 데이터 저장
+    # 5. DB에서 최신 기사 100개 가져오기 (군집화 비교 대상)
+    print("--- 💾 DynamoDB에서 군집화 비교를 위한 최신 기사를 가져옵니다. ---")
+    recent_db_articles = get_recent_articles(limit=100)
+    print(f"--- {len(recent_db_articles)}개의 기존 기사를 가져왔습니다. ---")
+
+    # 5. 뉴스 군집화 (Clustering)
+    # 새로 수집된 기사와 DB의 최신 기사를 합쳐서 군집화 수행
+    all_articles_for_clustering = recent_db_articles + processed_articles_for_db
+
+    if all_articles_for_clustering:
+        print(f"--- 📰 뉴스 군집화를 시작합니다. (총 {len(all_articles_for_clustering)}개 기사, 임계값: {CLUSTERING_THRESHOLD}) ---")
+
+        # 각 기사의 제목과 설명을 합쳐서 벡터로 변환할 문장 리스트 생성
+        corpus = [f"{article['title']}. {article.get('description', '')}" for article in all_articles_for_clustering]
+
+        # SBERT 모델을 사용하여 문장들을 임베딩(벡터화)
+        embeddings = sbert_model.encode(corpus, convert_to_tensor=True, show_progress_bar=False)
+
+        # 코사인 유사도 기반으로 임계값 이상의 유사도를 가진 기사 군집 탐색
+        clusters = util.community_detection(embeddings, min_community_size=1, threshold=CLUSTERING_THRESHOLD)
+
+        cluster_id_map = {}
+        # 각 군집에 대해 고유 ID 부여 및 대표 기사 설정
+        for i, cluster in enumerate(clusters):
+            # 군집의 대표 기사는 전체 목록의 첫 번째 기사로 선정
+            representative_article = all_articles_for_clustering[cluster[0]]
+            # 대표 기사의 고유 키(PK#SK)를 clusterId로 사용
+            cluster_id = f"{representative_article['PK']}#{representative_article['SK']}"
+
+            for article_idx in cluster:
+                # 맵에 '기사 인덱스' -> '대표 기사 clusterId' 저장
+                cluster_id_map[article_idx] = cluster_id
+
+        # 새로 수집된 기사들에 대해서만 cluster_id와 is_representative를 할당
+        start_index_for_new_articles = len(recent_db_articles)
+        for i, article in enumerate(processed_articles_for_db):
+            # 전체 목록에서의 인덱스 계산
+            combined_list_index = start_index_for_new_articles + i
+            
+            # 해당 인덱스의 기사가 속한 군집의 ID를 가져옴
+            cluster_id = cluster_id_map.get(combined_list_index)
+
+            if cluster_id:
+                article['clusterId'] = cluster_id
+                # 자신의 고유 키가 cluster_id와 같으면 대표 기사임
+                article_unique_key = f"{article['PK']}#{article['SK']}"
+                article['is_representative'] = 1 if article_unique_key == cluster_id else 0
+            else:
+                # 군집에 속하지 않은 경우(이론상 발생하지 않음), 자기 자신을 대표로 설정
+                article['clusterId'] = f"{article['PK']}#{article['SK']}"
+                article['is_representative'] = 1
+        print(f"--- 군집화 완료. 총 {len(clusters)}개의 군집을 찾았습니다. ---")
+
+    # 6. 최종 데이터 저장
     if processed_articles_for_db:
         save_data(processed_articles_for_db)
     else:
