@@ -291,7 +291,7 @@ def main(is_test_mode=False):
 
             # 군집의 첫 번째 기사를 대표로 지정합니다.
             representative_idx = cluster[0]
-            representative_map[representative_idx] = True
+            representative_map[representative_idx] = 1
 
             for article_idx in cluster:
                 # 맵에 '기사 인덱스' -> 'UUID clusterId' 저장
@@ -309,11 +309,11 @@ def main(is_test_mode=False):
             if cluster_id:
                 article['clusterId'] = cluster_id
                 # 대표 기사 맵을 확인하여 대표 여부를 설정합니다.
-                article['is_representative'] = True if representative_map.get(combined_list_index) else False
+                article['is_representative'] = 1 if representative_map.get(combined_list_index) else 0
             else:
                 # 군집에 속하지 않은 경우, 자기 자신을 대표로 설정하고 새로운 UUID를 부여합니다.
                 article['clusterId'] = uuid.uuid4().hex
-                article['is_representative'] = True
+                article['is_representative'] = 1
         print(f"--- 군집화 완료. 총 {len(clusters)}개의 군집을 찾았습니다. ---")
 
     # 6. 최종 데이터 저장
