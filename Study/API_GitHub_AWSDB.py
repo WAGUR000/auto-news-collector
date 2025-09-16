@@ -6,6 +6,7 @@ import google.generativeai as genai
 from urllib.parse import quote, urlparse
 import json
 import argparse
+import uuid
 from decimal import Decimal
 from dotenv import load_dotenv
 from boto3.dynamodb.conditions import Key
@@ -279,15 +280,19 @@ def main(is_test_mode=False):
         clusters = util.community_detection(embeddings, min_community_size=1, threshold=CLUSTERING_THRESHOLD)
 
         cluster_id_map = {}
+        representative_map = {} # 대표 기사 인덱스를 기록하기 위한 맵
+
         # 각 군집에 대해 고유 ID 부여 및 대표 기사 설정
-        for i, cluster in enumerate(clusters):
-            # 군집의 대표 기사는 전체 목록의 첫 번째 기사로 선정
-            representative_article = all_articles_for_clustering[cluster[0]]
-            # 대표 기사의 고유 키(PK#SK)를 clusterId로 사용
-            cluster_id = f"{representative_article['PK']}#{representative_article['SK']}"
+        for cluster in clusters:
+            # 군집의 대표 ID로 짧고 고유한 UUID를 생성합니다.
+            cluster_id = uuid.uuid4().hex
+
+            # 군집의 첫 번째 기사를 대표로 지정합니다.
+            representative_idx = cluster[0]
+            representative_map[representative_idx] = True
 
             for article_idx in cluster:
-                # 맵에 '기사 인덱스' -> '대표 기사 clusterId' 저장
+                # 맵에 '기사 인덱스' -> 'UUID clusterId' 저장
                 cluster_id_map[article_idx] = cluster_id
 
         # 새로 수집된 기사들에 대해서만 cluster_id와 is_representative를 할당
@@ -295,18 +300,17 @@ def main(is_test_mode=False):
         for i, article in enumerate(processed_articles_for_db):
             # 전체 목록에서의 인덱스 계산
             combined_list_index = start_index_for_new_articles + i
-            
+
             # 해당 인덱스의 기사가 속한 군집의 ID를 가져옴
             cluster_id = cluster_id_map.get(combined_list_index)
 
             if cluster_id:
                 article['clusterId'] = cluster_id
-                # 자신의 고유 키가 cluster_id와 같으면 대표 기사임
-                article_unique_key = f"{article['PK']}#{article['SK']}"
-                article['is_representative'] = 1 if article_unique_key == cluster_id else 0
+                # 대표 기사 맵을 확인하여 대표 여부를 설정합니다.
+                article['is_representative'] = 1 if representative_map.get(combined_list_index) else 0
             else:
-                # 군집에 속하지 않은 경우(이론상 발생하지 않음), 자기 자신을 대표로 설정
-                article['clusterId'] = f"{article['PK']}#{article['SK']}"
+                # 군집에 속하지 않은 경우, 자기 자신을 대표로 설정하고 새로운 UUID를 부여합니다.
+                article['clusterId'] = uuid.uuid4().hex
                 article['is_representative'] = 1
         print(f"--- 군집화 완료. 총 {len(clusters)}개의 군집을 찾았습니다. ---")
 
