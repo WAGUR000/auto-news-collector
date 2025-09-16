@@ -3,7 +3,7 @@ import os
 import requests
 import pendulum
 import google.generativeai as genai
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 import json
 import argparse
 from dotenv import load_dotenv
@@ -32,6 +32,19 @@ def chunked(iterable, n):
     """iterable을 n개씩 묶어서 반환"""
     for i in range(0, len(iterable), n):
         yield iterable[i:i + n]
+
+def get_outlet_name(original_link):
+    """
+    원본 링크에서 도메인을 추출하여 언론사 이름을 반환합니다.
+    매핑되지 않은 경우 '기타언론사'를 반환합니다.
+    """
+    if not original_link:
+        return '기타언론사'
+    try:
+        domain = urlparse(original_link).netloc
+        return NEWS_OUTLET_MAP.get(domain, '기타언론사')
+    except Exception:
+        return '기타언론사'
 
 def main(is_test_mode=False):
     """뉴스 데이터를 수집, 분석하고 DynamoDB에 저장하는 메인 함수"""
@@ -176,6 +189,7 @@ def main(is_test_mode=False):
                     pub_date_str1 = pub_date_obj.format('YYYY-MM-DD')
                     link = item.get("link")
 
+                    original_link = item.get("originallink")
                     partition_key = pub_date_str1
                     sort_key = f"{pub_date_obj.to_iso8601_string()}#{link}"
 
@@ -194,7 +208,8 @@ def main(is_test_mode=False):
                         "sub_category": gemini_info.get("category2"),
                         "description": item.get("description", "").replace("<b>", "").replace("</b>", "").replace("&quot;", "\""),
                         "pub_date": pub_date_obj.to_iso8601_string(),
-                        "originallink": item.get("originallink") # 네이버 뉴스링크가 아닌, 뉴스 제공처의 원본 링크
+                        "originallink": original_link, # 네이버 뉴스링크가 아닌, 뉴스 제공처의 원본 링크
+                        "outlet": get_outlet_name(original_link) # originallink 기반으로 언론사 분류
                     })
 
         except Exception as e:
