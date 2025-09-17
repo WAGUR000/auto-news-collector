@@ -45,7 +45,7 @@ def main(is_test_mode=False): #is_test_mode: 테스트 모드 여부. 기본값�
     recent_db_articles = get_recent_articles(limit=recent_articles_limit)
     print(f"--- {len(recent_db_articles)}개의 기존 기사를 가져왔습니다. ---")
     
-    CLUSTERING_THRESHOLD = 0.75 # 군집화 유사도 임계값 (0.0 ~ 1.0)
+    CLUSTERING_THRESHOLD = 0.85 # 군집화 유사도 임계값 (0.0 ~ 1.0)
 
     clustered_articles=cluster_news(recent_db_articles, processed_articles_for_db, threshold=CLUSTERING_THRESHOLD)
     # 5. 데이터 저장
