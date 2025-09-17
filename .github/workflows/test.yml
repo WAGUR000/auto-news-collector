@@ -1,7 +1,7 @@
 # 워크플로우 이름
 name: Test_Crawl_and_Save_to_DynamoDB
 
-# [추가] 동시 실행 제어: 이 워크플로우는 한 번에 하나만 실행됩니다.
+# 동시 실행 제어
 concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: false
@@ -10,7 +10,7 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - 'Study/**.py'
+      - 'Study/**.py' # Study폴더의 py파일이 push 되었을때 실행됨
 
 # 실행할 작업
 jobs:

@@ -7,12 +7,10 @@ def chunked(iterable, n): # Gemini API 호출 시 배치 처리를 위한 함수
     for i in range(0, len(iterable), n):
         yield iterable[i:i + n]
 
-def clean_text(text):
-    """HTML 태그 등을 제거하는 간단한 텍스트 클리너"""
+def clean_text(text): # 텍스트 정리 함수 (제목, 설명같은 텍스트 필드에 사용)
     if not isinstance(text, str):
         return ""
     return text.replace("<b>", "").replace("</b>", "").replace("&quot;", "\"")
-
 
 def get_outlet_name(original_link): # 언론사 도메인 매핑 함수
     """
@@ -33,7 +31,7 @@ def combine_and_format_articles(original_articles, gemini_results):
     gemini_map = {item['temp_id']: item for item in gemini_results}
     processed_articles = []
 
-    for item in original_articles:
+    for item in original_articles: # 원본기사 하나씩 처리
         temp_id = item.get('temp_id')
         if temp_id in gemini_map:
             gemini_info = gemini_map[temp_id]

@@ -1,7 +1,7 @@
 # 워크플로우 이름
 name: API News and Save to DynamoDB
 
-# [추가] 동시 실행 제어: 이 워크플로우는 한 번에 하나만 실행됩니다.
+# 동시 실행 제어
 concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: false
@@ -15,7 +15,7 @@ jobs:
   crawl-and-save:
     runs-on: ubuntu-latest
     
-    # [추가] 타임아웃: 이 작업은 10분 이상 실행되면 자동 실패합니다.
+    # [추가] 타임아웃: 이 작업은 15분 이상 실행되면 자동 실패합니다.
     timeout-minutes: 15
 
     steps:
@@ -75,4 +75,4 @@ jobs:
         NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
         NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      run: python API_GitHub_AWSDB.py # 실제 스크립트 파일명으로 변경
+      run: python API_GitHub_AWSDB.py 
