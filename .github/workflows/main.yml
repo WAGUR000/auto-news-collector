@@ -12,7 +12,7 @@ on:
 
 # 실행할 작업
 jobs:
-  crawl-and-save:
+  crawl-and-save: # 작업 이름. job별로 실행환경을 초기화하므로 여러 job으로 나누면 매번 의존성 설치를 다시 해야하여 하나의 작업만 수행
     runs-on: ubuntu-latest
     
     # [추가] 타임아웃: 이 작업은 15분 이상 실행되면 자동 실패합니다.
@@ -47,9 +47,7 @@ jobs:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ap-northeast-2
-# ... (기존의 checkout, setup-python, install dependencies, configure-aws-credentials 단계)
 
-    #  [추가 1] 네이버 API 상태 확인 단계
     - name: Check Naver API Status
       env:
         NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
@@ -61,7 +59,7 @@ jobs:
         curl --fail -H "X-Naver-Client-Id: ${NAVER_CLIENT_ID}" -H "X-Naver-Client-Secret: ${NAVER_CLIENT_SECRET}" \
         "https://openapi.naver.com/v1/search/news.json?query=test&display=1" > /dev/null
 
-    #  [추가 2] AWS DynamoDB 연결 확인 단계
+        
     - name: Check AWS DynamoDB Connection
       # aws cli 명령어로 테이블 정보를 읽어봅니다.
       # 이 명령이 성공하면, 자격 증명(credentials)이 유효하고 테이블에 접근 가능하다는 의미입니다.

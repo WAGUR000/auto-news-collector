@@ -49,7 +49,6 @@ jobs:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ap-northeast-2
-# ... (기존의 checkout, setup-python, install dependencies, configure-aws-credentials 단계)
 
     #  [추가 1] 네이버 API 상태 확인 단계
     - name: Check Naver API Status
@@ -78,4 +77,4 @@ jobs:
         NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
         NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      run: python API_GitHub_AWSDB.py --test
+      run: python API_GitHub_AWSDB.py --test # --test 옵션 추가하여 테스트 모드로 실행

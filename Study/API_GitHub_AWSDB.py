@@ -22,7 +22,7 @@ def main(is_test_mode=False): #is_test_mode: 테스트 모드 여부. 기본값�
     else:
         display_count = 100
         batch_size = 10
-        recent_articles_limit = 100
+        recent_articles_limit = 300
 
     # 1. 네이버 뉴스 API 호출 /  매개변수 : 표시할 뉴스 개수
     raw_articles = naver_api_request(display_count=display_count)
