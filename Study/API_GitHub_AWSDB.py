@@ -1,5 +1,3 @@
-
-
 import pendulum
 import argparse
 from api_handler import naver_api_request, gemini_api_request
@@ -51,15 +49,12 @@ def main(is_test_mode=False): #is_test_mode: 테스트 모드 여부. 기본값�
     
     CLUSTERING_THRESHOLD = 0.75 # 군집화 유사도 임계값 (0.0 ~ 1.0)
 
-    cluster_news(recent_db_articles, processed_articles_for_db, threshold=CLUSTERING_THRESHOLD)
+    clustered_articles=cluster_news(recent_db_articles, processed_articles_for_db, threshold=CLUSTERING_THRESHOLD)
 
-   
-   
-    # 6. 최종 데이터 저장
-    if processed_articles_for_db:
-        save_data(processed_articles_for_db)
+    if clustered_articles:
+        save_data(clustered_articles)
     else:
-        print("처리할 기사가 없습니다.")
+        print("--- 저장할 새로운 기사가 없습니다. ---")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="뉴스 데이터를 수집하고 분석하여 DynamoDB에 저장합니다.")
