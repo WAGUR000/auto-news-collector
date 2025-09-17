@@ -18,7 +18,7 @@ from news_organization_lists import NEWS_OUTLET_MAP
 DYNAMODB_TABLE_NAME = 'News_Data_v1'
 GEMINI_MODEL_NAME = 'gemini-2.5-flash'
 AWS_REGION = 'ap-northeast-2'
-CLUSTERING_THRESHOLD = 0.85 # 군집화 유사도 임계값 (0.0 ~ 1.0)
+CLUSTERING_THRESHOLD = 0.75 # 군집화 유사도 임계값 (0.0 ~ 1.0)
 
 # GitHub Actions 환경에서는 키를 직접 넣지 않아도 알아서 인증됩니다.
 dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
@@ -94,7 +94,7 @@ def main(is_test_mode=False):
     # GitHub Actions 환경에서는 .env 파일이 없으므로 이 코드는 무시됩니다.
     # 로컬 테스트
     # .\venv\Scripts\activate (CMD, Git Bash로는 불가능)
-    # python Study/API_GitHub_AWSDB.py --test (테스트 환경 실행)
+    # python Study/API_GitHub_AWSDB.py --test (테스트 환경 실행 --test 옵션 필요)
 
 
     load_dotenv() # .env 파일에서 환경 변수 로드. 없을경우 넘어감
