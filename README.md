@@ -84,7 +84,7 @@ API를 이용하기 때문에 response로 받는 JSON 파일 안의 정보외에
 
 - Airflow : Airflow를 실습한 뒤 Actions를 사용하였는데, 매우 단순한 작업이라면 Actions를 이용한 작업으로 충분하나, 복잡해지거나 순환과정 같은 부분이 생길경우 AirFlow가, DAG가 서로 얽혀 관리가 필요하다면 Kubernetes가 사용된다.
 
-- AWS EventBridge - 만약 Git Hub Actions같은 역할을 AWS안에서 모두 해결하고 싶다면 AWS Eventbridge를 이용할 수 있다.
+- AWS EventBridge - 만약 Git Hub Actions같은 역할을 AWS안에서 모두 해결하고 싶다면 AWS Eventbridge를 이용할 수 있다. -> 조사해보니 이 친구는 AWS안의 시스템에게 정보를 보내거나 하는것은 가능하나 다른것을 호출하고 실행하는 역할은 할 수 없다고 함 대체 가능한 방법은 지금 같은 상황이라면 EC2 + Airflow로 진행해도 프리티어로 비용이 발생하지 않을 수 도 있음. 비용을 생각한다면 Git Hub Actions가 가장 좋은 방법
 
 
 이전에 생각했던 것 (2025-09-10)
