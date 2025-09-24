@@ -47,6 +47,7 @@
 
 2025-09-17 15:35 = 군집로직을 개선하고 DB에서 읽어오는 갯수를 100개에서 300개로 증가시켰으며, 모듈화를 진행하고 readme에 Commit했던 이력에 대한 부가설명을 작성하였다.
 
+2025-09-24 10:27 = 분석을 위한 s3저장 로직 테스트
 
 요약 : Python, GitHub Actions와 Amazion Free tier일때 사용하기 적합한 DynamoDB, 네이버 검색 API를 이용하여 수집한 뉴스정보를 Gemini 2.5 Flash API가 분석한 정보를 포함하고, 군집화를 한뒤 AWS DynamoDB에 저장
 
