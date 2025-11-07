@@ -47,6 +47,15 @@
 
 2025-09-17 15:35 = 군집로직을 개선하고 DB에서 읽어오는 갯수를 100개에서 300개로 증가시켰으며, 모듈화를 진행하고 readme에 Commit했던 이력에 대한 부가설명을 작성하였다.
 
+2025-09-24 10:27 = 분석을 위한 s3저장 로직 테스트
+
+Lambda를 통하여 실시간 Stream을 저장하고, 그 데이터를 토대로 Lambda로 parquet 일일데이터로 변환하도록 만들었음 
+
+2025-10-04 02:00 = 수집도구 실패 발생
+
+2025-10-04 13:43 = Git Hub Actions 실행환경을 3.9에서 3.12로 변경
+
+~ 자격증 공부가 끝나면 frontend에 분석 쿼리 요청부분, Gateway 처리 Lambda에 event 설정 및 Athena 요청 권한 부여를 넣어 서비스를 완료 할 것 ~
 
 요약 : Python, GitHub Actions와 Amazion Free tier일때 사용하기 적합한 DynamoDB, 네이버 검색 API를 이용하여 수집한 뉴스정보를 Gemini 2.5 Flash API가 분석한 정보를 포함하고, 군집화를 한뒤 AWS DynamoDB에 저장
 
@@ -84,7 +93,23 @@ API를 이용하기 때문에 response로 받는 JSON 파일 안의 정보외에
 
 - Airflow : Airflow를 실습한 뒤 Actions를 사용하였는데, 매우 단순한 작업이라면 Actions를 이용한 작업으로 충분하나, 복잡해지거나 순환과정 같은 부분이 생길경우 AirFlow가, DAG가 서로 얽혀 관리가 필요하다면 Kubernetes가 사용된다.
 
-- AWS EventBridge - 만약 Git Hub Actions같은 역할을 AWS안에서 모두 해결하고 싶다면 AWS Eventbridge를 이용할 수 있다.
+- AWS EventBridge - 만약 Git Hub Actions같은 역할을 AWS안에서 모두 해결하고 싶다면 AWS Eventbridge를 이용할 수 있다. -> 조사해보니 이 친구는 AWS안의 시스템에게 정보를 보내거나 하는것은 가능하나 다른것을 호출하고 실행하는 역할은 할 수 없다고 함 대체 가능한 방법은 지금 같은 상황이라면 EC2 + Airflow로 진행해도 프리티어로 비용이 발생하지 않을 수 도 있음. 비용을 생각한다면 Git Hub Actions가 가장 좋은 방법 
+(사용 후)Runner가 존재하지 않고, 어떤 함수를 실행시키도록 일정 스케쥴링이 가능한 서비스이다. Glue ETL/ Firehose을 이용한 자동 테이블 갱신이 되고 있지않으므로, 하루에 한번(KST기준 02:00)INSERT데이터 테이블에서 7일이 지난 데이터 처리, 하루에 한번 INSERT 테이블에서 hour=0~23을 parquet형식으로 통합하는 Lambda를 각각 호출한다. 두 Lambda Function 모두 계층 용량한계보다 커서, ECR에 업로드한 도커 이미지를 사용한다.
+
+- Glue - Athena를 효율적으로 활용하기 위해 Kinesis Firehose -> Glue ETL -> Athena를 이용하고자 하였으나, Glue ETL을 사용하는경우 프리티어가 존재하지 않아 시간당 비용이 부과되어 생각보다 비용부담이 컸기에, Docker 이미지를 ECR을 활용하여 업로드하고, 이를 활용한 Lambda가 처리하도록 만들었다. Glue ETL은 사용하지 않고, Glue Crawler(일회성 테이블 생성용), Glue Table만을 사용한다.
+
+- Kinesis Firehose - Kinesis Firehose의 경우 동적활성화를 하지않으면 UTC기준으로 파티셔닝 되어 기사의 pub_date의 KST와 형식이 일치하지 않아 처리하기 어려워지고, 동적 파티셔닝을 할 경우 추가비용이 발생하여 INSERT STREAM 파티셔닝도 Lambda가 KST기준으로 처리하도록 만들었다.
+
+- OpenSearch - 서버리스 형태로 제공할 수는 있으나, 비용 최소화가 우선적인 상황에서 채용하긴 어려웠다.
+
+- S3 버킷 - INSERT데이터와 일간데이터를 저장하여 Athena를 통해 분석을 할 수 있도록 저장소 역할을 한다. 여러개의 버킷이 존재한다. 단, 20분마다 들어오는 INSERT 데이터는 시간별로 파티셔닝되고, 지나치게 많은 정보를 저장하는것을 방지하기 위해 수명주기 정책을 7일로 설정하고, 만료될경우 영구삭제가 되도록 만들었다.
+
+
+- ECR (Elastic Container Registry) - CMD를 통해 AWS와 연결하고, 도커로 이미지를 빌드 / AWS ECR 레포지토리에 push하여 이미지를 업로드하는데 사용하였다.
+
+
+
+
 
 
 이전에 생각했던 것 (2025-09-10)
@@ -93,4 +118,5 @@ API를 이용하기 때문에 response로 받는 JSON 파일 안의 정보외에
 - 생각해본 점2. '로그'가 6000개중 일부만 받아온게 아닐까? 일단 lambda 함수의 코드를 모두 주석처리하고, 혹시 AI API를 사용할때 csv파일로 보내고, csv파일로 받을 수 있는지도 확인해보면 좋을것 같다. 
 - 배운 점 : lambda는 Window bash에서 설치한 py 컨테이너와 충돌을 일으키는 부분이 있어, 레이어를 만들때 어느정도 확인을 해야하는 부분이 있다. 스트림을 활성화해서 INSERT 신호가 들어오면 트리거 되는 형식으로 작성되었는데, 이러한 기능은 꽤 도움이 될 것 같다. 당연하지만, lambda의 IAM 권한에서 DynamoDB에 대한 접근권한을 허용해야만 가능하다.
 - 개선점 : 클라우드 서비스를 이용해보고 싶어서 lambda를 사용했지만, 현재 환경에서 lambda를 사용할거라면 AWS AI나 AWS 머신러닝쪽으로 보내는 것이 현재 방법보다 좋지만 비용이 발생한다. 따라서 GitHub Actions에서 Naver API를 이용하여 JSON 파일을 받아오고, 이를 AI API에게 보내 분류를 시키는것이 더 좋은 개선 방법인 것 같다. 로컬 LLM은 컴퓨터가 켜져있어야 하니 자동화에는 어울리지 않고, 머신러닝을 직접 짜는것은 DT쪽에 더 가깝고, 분류도 정확하지 않을 수 있다.
+
 
