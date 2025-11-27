@@ -45,7 +45,7 @@ def combine_and_format_articles(original_articles, gemini_results):
                 # 변환 실패 시(예: '높음', None) 기본값 5를 사용하고 로그를 남깁니다.
                 print(f"Warning: 'importance' 값 '{importance_val}'을(를) 정수로 변환할 수 없어 기본값 5를 사용합니다. (temp_id: {temp_id})")
                 importance = 5
-        
+            keywords = gemini_info.get("keywords", [])
             # 감정을 안전하게 실수형(float)으로 변환합니다.
             sentiment_val = gemini_info.get("sentiment")
             try:
@@ -72,7 +72,8 @@ def combine_and_format_articles(original_articles, gemini_results):
                     "description": clean_text(item.get("description", "")),
                     "pub_date": pub_date_obj.to_iso8601_string(),
                     "originallink": original_link,
-                    "outlet": get_outlet_name(original_link)
+                    "outlet": get_outlet_name(original_link),
+                    "keywords": keywords
                 }
             processed_articles.append(formatted_article)
 

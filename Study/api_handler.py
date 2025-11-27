@@ -46,39 +46,46 @@ def gemini_api_request(articles):
             for item in articles]
      
     prompt = (
-               f"""아래는 뉴스 기사 목록입니다. 각 기사에 대해 `temp_id`, 주요 토픽, 감정, 대분류, 소분류, 중요도를 추출해 JSON 리스트로 반환하세요.
-                 반드시 입력된 `temp_id`를 그대로 유지해야 하고, 아래의 출력 형식과 규칙을 반드시 지켜주세요.
-                  ### 필수 규칙: 대분류 선택
-                   아래에 제시된 8개의 `대분류` 중 가장 적합한 하나를 선택하여 `category1` 값으로 지정하세요.
-                    - 정치
-                    - 경제
-                    - 사회
-                    - IT/과학
-                    - 문화/생활
-                    - 연예
-                    - 스포츠
-                    - 국제
-            입력:
+            f"""아래는 뉴스 기사 목록입니다. 각 기사에 대해 지정된 정보를 추출해 JSON 리스트로 반환하세요.
+             
+             ### 분석 목표
+             1. **topic**: 기사 내용을 한 문장이나 구로 요약 (예: "배우 이순재 별세")
+             2. **keywords**: 통계 분석을 위한 **핵심 명사(고유명사, 인물, 기관, 핵심 소재)**를 3~5개 추출 (예: ["이순재", "별세", "원로배우"])
+             
+             ### 필수 규칙
+             1. **ID 유지**: 입력된 `temp_id`를 그대로 반환해야 합니다.
+             2. **대분류 선택**: 아래 8개 중 하나를 반드시 선택하여 `category1`에 입력하세요.
+                - 정치, 경제, 사회, IT/과학, 문화/생활, 연예, 스포츠, 국제
+             3. **JSON 형식 준수**: 응답은 반드시 순수한 JSON 리스트여야 합니다.
+
+            입력 데이터:
             {json.dumps(articles_for_prompt, ensure_ascii=False, indent=2)}
             
-            출력 형식:
+            출력 예시 및 형식:
             [
               {{
                 "temp_id": "article_0",
-                "topic": "주요 토픽",
-                "sentiment": 0.0(부정)~5.0(중립)~10.0(긍정) 사이의 실수 (float형식, 소수점 첫째자리까지)",
-                "category1": "대분류",
-                "category2": "소분류",
-                "importance": 1~10 사이의 정수 (1: 매우 낮음, 10: 매우 높음, int형식)
+                "topic": "기사의 핵심 주제 요약 (구 형태)",
+                "keywords": ["핵심단어1", "핵심단어2", "핵심단어3"],
+                "sentiment": 0.0,
+                "category1": "경제",
+                "category2": "금융시장",
+                "importance": 7
               }},
               ...
             ]
+            
+            위 형식을 엄격히 지켜서 JSON 결과만 출력하세요.
             """
         )
         
     try:
+        # 모델 설정 (Generation Config를 사용하여 JSON 강제화를 하면 더 안정적입니다)
         response = model.generate_content(prompt)
-        json_str = response.text.strip('`').strip('json').strip()
+        
+        # 마크다운 코드 블록 제거 및 공백 제거
+        json_str = response.text.strip().replace('```json', '').replace('```', '')
+        
         try:
             # 응답에서 JSON 파싱
             gemini_result = json.loads(json_str)
