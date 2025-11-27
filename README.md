@@ -55,7 +55,10 @@ Lambda를 통하여 실시간 Stream을 저장하고, 그 데이터를 토대로
 
 2025-10-04 13:43 = Git Hub Actions 실행환경을 3.9에서 3.12로 변경
 
-~ 자격증 공부가 끝나면 frontend에 분석 쿼리 요청부분, Gateway 처리 Lambda에 event 설정 및 Athena 요청 권한 부여를 넣어 서비스를 완료 할 것 ~
+2025-11-07 10:07 = 무료 크레딧 소진으로 인해 Gemini 모델을 2.5 Flash에서 2.5 Flash-Lite로 변경
+
+2025-11-27 11:00 = '분석'을 위해 Glue Table을 저장한것 까지는 좋았으나, 기존 수집 정보의 'topic'은 기사에 대한 '요약정보'이기 때문에, 키워드 요약으로는 적절하지 않았고, 이에 따라 prompt문을 변경함. 기존 수집한 데이터 22만건의 데이터에 대한 키워드추출에 대해 고민해봐야 할듯
+
 
 요약 : Python, GitHub Actions와 Amazion Free tier일때 사용하기 적합한 DynamoDB, 네이버 검색 API를 이용하여 수집한 뉴스정보를 Gemini 2.5 Flash API가 분석한 정보를 포함하고, 군집화를 한뒤 AWS DynamoDB에 저장
 
