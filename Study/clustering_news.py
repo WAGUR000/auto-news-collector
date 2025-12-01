@@ -44,8 +44,8 @@ def cluster_news(recent_db_articles, processed_articles_for_db, threshold=0.82):
         embeddings = sbert_model.encode(corpus, convert_to_tensor=True, show_progress_bar=False)
         
         # 군집화 수행
-        # min_community_size=2: 최소 2개 이상 뭉쳐야 군집 인정
-        clusters = util.community_detection(embeddings, min_community_size=2, threshold=threshold)
+        # min_communit
+        clusters = util.community_detection(embeddings, min_community_size=1, threshold=threshold)
         total_clusters += len(clusters)
         
         # 결과 반영
