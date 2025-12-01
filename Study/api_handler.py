@@ -19,7 +19,7 @@ genai.configure(api_key=GEMINI_API_KEY)
 GEMINI_MODEL_NAME = 'gemini-2.5-flash-lite' # 모델 설정
 model = genai.GenerativeModel(GEMINI_MODEL_NAME)
 
-def naver_api_request(display_count=100):
+def naver_api_request(display_count=150):
     keyword = "뉴스"
     enc_keyword = quote(keyword)
     url = f"https://openapi.naver.com/v1/search/news.json?query={enc_keyword}&display={display_count}&start=1&sort=date"
