@@ -19,20 +19,54 @@ genai.configure(api_key=GEMINI_API_KEY)
 GEMINI_MODEL_NAME = 'gemini-2.5-flash-lite' # 모델 설정
 model = genai.GenerativeModel(GEMINI_MODEL_NAME)
 
+import requests
+from urllib.parse import quote
+import time # API 호출 간격을 위해 추가
+
 def naver_api_request(display_count=150):
     keyword = "뉴스"
     enc_keyword = quote(keyword)
-    url = f"https://openapi.naver.com/v1/search/news.json?query={enc_keyword}&display={display_count}&start=1&sort=date"
     headers = {"X-Naver-Client-Id": NAVER_CLIENT_ID, "X-Naver-Client-Secret": NAVER_CLIENT_SECRET}
+    
+    all_articles = [] # 결과를 모을 리스트
+
+    # Naver API는 start 값이 최대 1000까지만 가능하므로, 최대 1000건까지만 수집 가능하도록 제한
+    if display_count > 1000:
+        print("경고: 네이버 API 정책상 최대 1000건까지만 조회 가능합니다. 1000건으로 조정합니다.")
+        display_count = 1000
 
     try:
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-        news_data = response.json()
-        raw_articles = news_data.get("items", [])
-        return raw_articles
+        # 1부터 display_count까지 100단위로 건너뛰며 반복 (예: 1, 101, 201...)
+        for start_index in range(1, display_count + 1, 100):
+            
+            # 이번 요청에 필요한 개수 계산 (남은 개수와 100 중 작은 값 선택)
+            # 예: 150개 요청 시 -> 첫 번째 루프: 100, 두 번째 루프: 50
+            query_display = min(100, display_count - len(all_articles))
+            
+            url = f"https://openapi.naver.com/v1/search/news.json?query={enc_keyword}&display={query_display}&start={start_index}&sort=date"
+            
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            news_data = response.json()
+            items = news_data.get("items", [])
+            
+            # 결과 리스트에 추가
+            all_articles.extend(items)
+            
+            # 검색 결과가 요청한 것보다 적으면 조기 종료 (예: 검색 결과가 총 5개뿐인 경우)
+            if len(items) < query_display:
+                break
+                
+            # 연속 호출 시 네이버 서버 부하 방지 및 차단 예방을 위한 아주 짧은 대기
+            time.sleep(0.1)
+
+        return all_articles
+
     except requests.exceptions.RequestException as e:
         print(f"네이버 뉴스 API 호출 중 에러 발생: {e}")
+        # 에러 발생 시 부분 수집된 데이터라도 반환할지, 아니면 종료할지 결정 필요
+        # 여기서는 기존 로직대로 종료 처리
         exit(1)
 
 def gemini_api_request(articles):
