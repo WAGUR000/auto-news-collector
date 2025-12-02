@@ -75,14 +75,17 @@ def cluster_news(recent_db_articles, processed_articles_for_db, threshold=0.75):
                 global_idx = indices[local_idx]
                 
                 # 새로 수집된 기사(processed_articles_for_db)에 대해서만 값 업데이트
-                # (과거 기사는 이미 DB에 있으므로 업데이트 불필요하거나, 필요시 업데이트)
                 if global_idx >= new_article_start_idx:
                     all_articles[global_idx]['clusterId'] = final_cluster_id
                     
-                    # 대표 기사 여부는 '현재 배치 내'에서 결정
-                    all_articles[global_idx]['is_representative'] = 1 if i == best_local_idx else 0
+                    # [수정] 대표 기사 선정 로직 변경
+                    # Case A: 기존 클러스터 ID를 상속받은 경우 -> 새 기사는 무조건 대표가 아님 (기존 DB의 대표 유지)
+                    if existing_cluster_id:
+                        all_articles[global_idx]['is_representative'] = 0
                     
-                    # [팁] 만약 과거 기사의 Topic이 더 좋다면 그걸 가져오는 로직을 추가할 수도 있음
+                    # Case B: 완전히 새로운 클러스터인 경우 -> 계산된 best_local_idx를 따름
+                    else:
+                        all_articles[global_idx]['is_representative'] = 1 if i == best_local_idx else 0
 
-    # 새로 수집된 기사만 반환 (이제 과거 기사와 같은 ID를 가질 수 있음)
+    # 새로 수집된 기사만 반환
     return all_articles[new_article_start_idx:]
