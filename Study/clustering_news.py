@@ -8,7 +8,7 @@ MODEL_NAME = 'jhgan/ko-sroberta-multitask'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 sbert_model = SentenceTransformer(MODEL_NAME, device=device)
 
-def cluster_news(recent_db_articles, processed_articles_for_db, threshold=0.82):
+def cluster_news(recent_db_articles, processed_articles_for_db, threshold=0.75):
     # 1. 전체 기사 병합 및 초기화
     all_articles = recent_db_articles + processed_articles_for_db
     for article in all_articles:
@@ -44,7 +44,6 @@ def cluster_news(recent_db_articles, processed_articles_for_db, threshold=0.82):
         embeddings = sbert_model.encode(corpus, convert_to_tensor=True, show_progress_bar=False)
         
         # 군집화 수행
-        # min_communit
         clusters = util.community_detection(embeddings, min_community_size=1, threshold=threshold)
         total_clusters += len(clusters)
         
