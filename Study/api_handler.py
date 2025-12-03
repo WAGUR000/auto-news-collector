@@ -142,7 +142,10 @@ def gemini_api_request(articles):
         
     try:
         # 모델 설정 (Generation Config를 사용하여 JSON 강제화를 하면 더 안정적입니다)
-        response = model.generate_content(prompt)
+        response = model.generate_content(prompt,generation_config={
+            "response_mime_type": "application/json",  # 이 설정이 핵심입니다
+            "temperature": 0.3, # 분석 작업이므로 창의성을 약간 낮추는 것이 좋습니다
+        })
         
         # 마크다운 코드 블록 제거 및 공백 제거
         json_str = response.text.strip().replace('```json', '').replace('```', '')
