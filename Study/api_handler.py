@@ -70,6 +70,28 @@ def naver_api_request(display_count=150):
         exit(1)
 
 def gemini_api_request(articles):
+    news_schema = {
+        "type": "ARRAY",
+        "items": {
+            "type": "OBJECT",
+            "properties": {
+                "temp_id": {"type": "STRING"},
+                "topic": {"type": "STRING"},
+                "keywords": {
+                    "type": "ARRAY",
+                    "items": {"type": "STRING"}
+                },
+                "sentiment": {"type": "NUMBER"},
+                "category1": {
+                    "type": "STRING", 
+                    "enum": ["정치", "경제", "사회", "IT/과학", "문화/생활", "연예", "스포츠", "국제"]
+                },
+                "category2": {"type": "STRING"},
+                "importance": {"type": "INTEGER"}
+            },
+            "required": ["temp_id", "topic", "keywords", "sentiment", "category1", "category2", "importance"]
+        }
+    }
     articles_for_prompt = [
             # API에 보낼 기사 목록을 간결하게 만듭니다.
             {
@@ -143,8 +165,9 @@ def gemini_api_request(articles):
     try:
         # 모델 설정 (Generation Config를 사용하여 JSON 강제화를 하면 더 안정적입니다)
         response = model.generate_content(prompt,generation_config={
-            "response_mime_type": "application/json",  # 이 설정이 핵심입니다
-            "temperature": 0.3, # 분석 작업이므로 창의성을 약간 낮추는 것이 좋습니다
+            "response_mime_type": "application/json",  
+            "response_schema": news_schema,
+            "temperature": 0.3,
         })
         
         # 마크다운 코드 블록 제거 및 공백 제거
