@@ -9,6 +9,8 @@ concurrency:
 on:
   schedule:
     - cron: '*/20 * * * *'
+  repository_dispatch:
+    types: [trigger-cron-job]
 
 # 실행할 작업
 jobs:
