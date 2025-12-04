@@ -7,8 +7,8 @@ concurrency:
   cancel-in-progress: false
 
 on:
-  schedule:
-    - cron: '*/20 * * * *'
+  # schedule:
+  # - cron: '*/20 * * * *'
   repository_dispatch:
     types: [trigger-cron-job]
 
