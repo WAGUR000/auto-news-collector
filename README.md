@@ -176,7 +176,7 @@
 * **12-04 16:55**: 여전히 연예 뉴스의 중요도가 높게 평가되어 prompt를 추가했다.
 </details>
 
-<summary><strong>2025-12-01 ~ 12-04</strong></summary>
+<summary><strong>2025-12-07</strong></summary>
 
 * **12-07 **: Gemini가 프리티어의 quota수를 20으로 크게 줄여서, 무료로 사용하던 API를 전혀 사용할수 없게되었다. Google Gemini API대신, 다른 AI를 활용하여 데이터를 분석하도록 변경해야한다.
 * https://discuss.ai.google.dev/t/is-gemini-2-5-pro-disabled-for-free-tier/111261/2
