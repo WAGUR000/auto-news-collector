@@ -159,7 +159,7 @@
 </details>
 
 <details>
-<summary><strong>2025-12-01 ~ 12-04 (최근 업데이트)</strong></summary>
+<summary><strong>2025-12-01 ~ 12-04</strong></summary>
 
 * **12-01 10:02**: 군집화가 적절하지 않아서, 범용 군집화 모델 대신 한국어 군집 모델을 새로 적용했다.
 * **12-01 10:45**: 연예계 뉴스, 지자체 상 수상등 큰 이슈가 아님에도 중요도가 4~6을 배정받아, 중요도 관련 prompt를 추가했다.
@@ -175,6 +175,18 @@
 * **12-04 13:59**: 기존 GitHub Actions 스케쥴러를 통한 작업은 불규칙적(20분 단위로 설정헀으나, 한시간에 한번도 수행되지 않는 경우가 존재함)하여, EventBridge 예약된 규칙작업으로 GitHub Workflow를 실행시키도록 했다.
 * **12-04 16:55**: 여전히 연예 뉴스의 중요도가 높게 평가되어 prompt를 추가했다.
 </details>
+
+<summary><strong>2025-12-01 ~ 12-04</strong></summary>
+
+* **12-07 **: Gemini가 프리티어의 quota수를 20으로 크게 줄여서, 무료로 사용하던 API를 전혀 사용할수 없게되었다. Google Gemini API대신, 다른 AI를 활용하여 데이터를 분석하도록 변경해야한다.
+* https://discuss.ai.google.dev/t/is-gemini-2-5-pro-disabled-for-free-tier/111261/2
+* https://www.reddit.com/r/Bard/comments/1pg02ni/they_removed_the_free_tier_for_25_pro_api/
+* https://gall.dcinside.com/mgallery/board/view/?id=eastfantasy&no=34475
+* https://discuss.ai.google.dev/t/do-they-really-think-we-wouldnt-notice-a-92-free-tier-quota-nerf/111262
+</details>
+
+
+
 
 ### 이후 가이드라인
 * Athena는 10MB마다 과금된다. 기사 한건당 1KB, 최근 24시간 수집데이터가 5000건임을 감안하면, 약 2일마다 매우 작은 비용이 발생하게 된다. 또한 Athena는 쿼리를 위해 S3 List/Get 요청을 매우 많이 해서, 이에 대한 비용도 발생한다.
