@@ -1,7 +1,7 @@
 boto3
 requests
 pendulum
-google-generativeai
+openai
 python-dotenv
 sentence-transformers
 torch --index-url https://download.pytorch.org/whl/cpu

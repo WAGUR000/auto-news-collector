@@ -1,23 +1,26 @@
 import os
-import google.generativeai as genai
-from urllib.parse import quote
-import requests
 import json
+import time
+import requests
+from urllib.parse import quote
 from dotenv import load_dotenv
+from openai import OpenAI  # google.generativeai 대신 사용
 
 load_dotenv() # .env 파일에서 환경 변수 로드. 없을경우 넘어감 
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 NAVER_CLIENT_ID = os.environ.get("NAVER_CLIENT_ID")
 NAVER_CLIENT_SECRET = os.environ.get("NAVER_CLIENT_SECRET")
 
-if not all([GEMINI_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET]):
-    print("에러: 필요한 환경변수(GEMINI_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET)가 설정되지 않았습니다.")
+if not all([GROQ_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET]):
+    print("에러: 필요한 환경변수(GROQ_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET)가 설정되지 않았습니다.")
     exit(1)
 
-genai.configure(api_key=GEMINI_API_KEY)
-GEMINI_MODEL_NAME = 'gemini-2.5-flash-lite' # 모델 설정
-model = genai.GenerativeModel(GEMINI_MODEL_NAME)
+client = OpenAI(
+    base_url="https://api.groq.com/openai/v1",
+    api_key=GROQ_API_KEY
+)
+GROQ_MODEL_NAME = "llama-3.3-70b-versatile"
 
 import requests
 from urllib.parse import quote
@@ -68,51 +71,37 @@ def naver_api_request(display_count=150):
         # 에러 발생 시 부분 수집된 데이터라도 반환할지, 아니면 종료할지 결정 필요
         # 여기서는 기존 로직대로 종료 처리
         exit(1)
-
-def gemini_api_request(articles):
-    news_schema = {
-        "type": "ARRAY",
-        "items": {
-            "type": "OBJECT",
-            "properties": {
-                "temp_id": {"type": "STRING"},
-                "topic": {"type": "STRING"},
-                "keywords": {
-                    "type": "ARRAY",
-                    "items": {"type": "STRING"}
-                },
-                "sentiment": {"type": "NUMBER"},
-                "category1": {
-                    "type": "STRING", 
-                    "enum": ["정치", "경제", "사회", "IT/과학", "문화/생활", "연예", "스포츠", "국제"]
-                },
-                "category2": {"type": "STRING"},
-                "importance": {"type": "INTEGER"}
-            },
-            "required": ["temp_id", "topic", "keywords", "sentiment", "category1", "category2", "importance"]
-        }
-    }
+  
+def groq_api_request(articles):
+    # 전처리: 불필요한 태그 제거 및 데이터 경량화
     articles_for_prompt = [
-            # API에 보낼 기사 목록을 간결하게 만듭니다.
-            {
-                "temp_id": item['temp_id'],
-                "title": item.get("title", "").replace("<b>", "").replace("</b>", ""),
-                "description": item.get("description", "")
-            }
-            for item in articles]
-     
-    prompt = (
-            f"""아래는 뉴스 기사 목록입니다. 각 기사에 대해 지정된 정보를 추출해 JSON 리스트로 반환하세요.
-             
-             ### 분석 목표
-             1. **topic**: 기사 내용을 한 문장이나 구로 요약 (예: "배우 이순재 별세")
-             2. **keywords**: 통계 분석을 위한 **핵심 명사(고유명사, 인물, 기관, 핵심 소재)**를 3~5개 추출 (예: ["이순재", "별세", "원로배우"])
-             3. **sentiment**: 기사 감성 점수를 0.0~10.0 사이의 실수로 반환 (0.0=매우부정, 5.0=중립, 10.0=매우긍정)
-             4. **category1**: 기사의 대분류 카테고리 (정치, 경제, 사회, IT/과학, 문화/생활, 연예, 스포츠, 국제) 중 하나 선택
-             5. **category2**: 기사의 세부 카테고리 (예: 금융시장, 건강, 영화 등)
-             6. **importance**: 기사 중요도를 0~10 사이의 정수로 평가 (0=매우낮음, 5=보통,10=매우높음). 사회적 영향력, 이슈성 등을 고려
+        {
+            "temp_id": item.get('temp_id', str(idx)), # temp_id가 없으면 인덱스로 대체 방어 로직
+            "title": item.get("title", "").replace("<b>", "").replace("</b>", ""),
+            "description": item.get("description", "").replace("<b>", "").replace("</b>", "")
+        }
+        for idx, item in enumerate(articles)
+    ]
 
-             * **0점 (데이터로서 가치 없음)**:
+    # 프롬프트: JSON Mode 사용을 위해 출력 형식을 명확히 지정
+    system_prompt = """
+    당신은 숙련된 데이터 분석가입니다. 
+    제공된 뉴스 기사 목록을 분석하여 지정된 JSON 형식으로 반환해야 합니다.
+    반드시 JSON 포맷만 출력하세요.
+    """
+
+    user_prompt = f"""
+    아래 뉴스 기사 목록을 분석하여 JSON 객체를 반환하세요.
+    반환할 JSON은 반드시 {{"reviews": [...]}} 형태여야 합니다.
+
+    ### 분석 목표 (각 기사별 항목)
+    1. **topic**: 한 문장 요약 (예: "배우 이순재 별세")
+    2. **keywords**: 핵심 단어 3~5개 리스트
+    3. **sentiment**: 0.0(부정) ~ 10.0(긍정) 실수
+    4. **category1**: [정치, 경제, 사회, IT/과학, 문화/생활, 연예, 스포츠, 국제] 중 택 1
+    5. **category2**: 세부 카테고리 (예: 경제-금융시장, 스포츠-축구, 문화/생활-영화 등)
+    6. **importance**: 0(무가치)~10(매우중요) 정수
+            * **0점 (데이터로서 가치 없음)**:
             - **[포토], [화보]** 등 텍스트 없이 사진만 있는 기사.
             - 날씨 예보(태풍/지진 등 제외), 부고 알림
             - 기사 내용이 없거나 제목만 있는 오류성 데이터.
@@ -137,52 +126,64 @@ def gemini_api_request(articles):
             - **국가 재난**: 전쟁(국내외 전쟁양상 변화나 전쟁발발), 대형 참사(대규모 화재, 지진, 태풍, 쓰나미 등), 전염병 대유행, 대통령 탄핵/당선.
             - 역사에 기록될 만한 중대한 발견이나 사건.
 
-             ### 필수 규칙
-             1. **ID 유지**: 입력된 `temp_id`를 그대로 반환해야 합니다.
-             2. **대분류 선택**: 아래 8개 중 하나를 반드시 선택하여 `category1`에 입력하세요.
-                - 정치, 경제, 사회, IT/과학, 문화/생활, 연예, 스포츠, 국제
-             3. **JSON 형식 준수**: 응답은 반드시 순수한 JSON 리스트여야 합니다.
 
-            입력 데이터:
-            {json.dumps(articles_for_prompt, ensure_ascii=False, indent=2)}
-            
-            출력 예시 및 형식:
-            [
-              {{
-                "temp_id": "article_0",
-                "topic": "기사의 핵심 주제 요약 (구 형태)",
-                "keywords": ["핵심단어1", "핵심단어2", "핵심단어3"],
-                "sentiment": 0.0,
+    ### 입력 데이터
+    {json.dumps(articles_for_prompt, ensure_ascii=False, indent=2)}
+
+    ### 필수 출력 형식
+    {{
+        "reviews": [
+            {{
+                "temp_id": "입력된 ID 유지",
+                "topic": "요약문",
+                "keywords": ["키워드1", "키워드2"],
+                "sentiment": 5.0,
                 "category1": "경제",
-                "category2": "금융시장",
-                "importance": 7
-              }},
-              ...
-            ]
-            
-            위 형식을 엄격히 지켜서 JSON 결과만 출력하세요.
-            """
-        )
-        
+                "category2": "금융",
+                "importance": 5
+            }},
+            ...
+        ]
+    }}
+    """
+
     try:
-        # 모델 설정 (Generation Config를 사용하여 JSON 강제화를 하면 더 안정적입니다)
-        response = model.generate_content(prompt,generation_config={
-            "response_mime_type": "application/json",  
-            "response_schema": news_schema,
-            "temperature": 0.3,
-        })
+        completion = client.chat.completions.create(
+            model=GROQ_MODEL_NAME,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.3,
+            response_format={"type": "json_object"} # Groq JSON 모드 활성화
+        )
+
+        # 응답 파싱
+        response_content = completion.choices[0].message.content
+        result_json = json.loads(response_content)
         
-        # 마크다운 코드 블록 제거 및 공백 제거
-        json_str = response.text.strip().replace('```json', '').replace('```', '')
-        
-        try:
-            # 응답에서 JSON 파싱
-            gemini_result = json.loads(json_str)
-            return gemini_result
-        except json.JSONDecodeError as e:
-            print(f"Gemini 응답 JSON 파싱 에러: {e}")
-            print(f"원본 응답 텍스트: {json_str}")
+        # "reviews" 키 안의 리스트를 반환
+        return result_json.get("reviews", [])
 
     except Exception as e:
-        print(f"Gemini API 호출 또는 응답 처리 중 에러 발생: {e}")
-        
+        print(f"Groq API 호출 중 에러 발생: {e}")
+        # 디버깅을 위해 실패 시 원본 응답을 찍어볼 수 있음
+        # print(completion.choices[0].message.content) 
+        return []
+
+# --- 실행 예시 (테스트용) ---
+if __name__ == "__main__":
+    # 1. 뉴스 수집
+    print("뉴스 수집 시작...")
+    news_list = naver_api_request(display_count=5) # 테스트로 5개만
+    
+    # temp_id 부여 (기존 로직에 있다고 가정)
+    for idx, news in enumerate(news_list):
+        news['temp_id'] = f"news_{idx}"
+
+    # 2. AI 분석
+    print(f"Groq 분석 시작 ({len(news_list)}건)...")
+    analyzed_data = groq_api_request(news_list)
+    
+    # 3. 결과 출력
+    print(json.dumps(analyzed_data, ensure_ascii=False, indent=2))
