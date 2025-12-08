@@ -16,7 +16,7 @@ if not all([GEMINI_API_KEY, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET]):
     exit(1)
 
 genai.configure(api_key=GEMINI_API_KEY)
-GEMINI_MODEL_NAME = 'gemini-2.0-flash-lite' # 모델 설정
+GEMINI_MODEL_NAME = 'gemini-2.5-flash-lite' # 모델 설정
 model = genai.GenerativeModel(GEMINI_MODEL_NAME)
 
 import requests
