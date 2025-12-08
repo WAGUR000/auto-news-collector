@@ -170,3 +170,4 @@ def groq_api_request(articles):
         # 디버깅을 위해 실패 시 원본 응답을 찍어볼 수 있음
         # print(completion.choices[0].message.content) 
         return []
+
