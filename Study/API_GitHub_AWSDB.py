@@ -1,6 +1,6 @@
 import pendulum
 import argparse
-from api_handler import naver_api_request, gemini_api_request
+from api_handler import naver_api_request, groq_api_request
 from dotenv import load_dotenv
 from aws_handler import get_recent_articles, save_data
 from clustering_news import cluster_news
@@ -36,8 +36,8 @@ def main(is_test_mode=False): #is_test_mode: 테스트 모드 여부. 기본값�
 
     # 3. 뉴스 기사를 배치로 처리하며 Gemini API 호출 / 매개변수 : 뉴스 기사 리스트, 배치 크기
     for batch in chunked(raw_articles, batch_size):
-        gemini_result = gemini_api_request(batch) 
-        combine_result=combine_and_format_articles(batch, gemini_result) 
+        groq_result = groq_api_request(batch) 
+        combine_result=combine_and_format_articles(batch, groq_result) 
         processed_articles_for_db.extend(combine_result)
 
     # 4. 군집화
