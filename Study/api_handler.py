@@ -170,20 +170,3 @@ def groq_api_request(articles):
         # 디버깅을 위해 실패 시 원본 응답을 찍어볼 수 있음
         # print(completion.choices[0].message.content) 
         return []
-
-# --- 실행 예시 (테스트용) ---
-if __name__ == "__main__":
-    # 1. 뉴스 수집
-    print("뉴스 수집 시작...")
-    news_list = naver_api_request(display_count=5) # 테스트로 5개만
-    
-    # temp_id 부여 (기존 로직에 있다고 가정)
-    for idx, news in enumerate(news_list):
-        news['temp_id'] = f"news_{idx}"
-
-    # 2. AI 분석
-    print(f"Groq 분석 시작 ({len(news_list)}건)...")
-    analyzed_data = groq_api_request(news_list)
-    
-    # 3. 결과 출력
-    print(json.dumps(analyzed_data, ensure_ascii=False, indent=2))
