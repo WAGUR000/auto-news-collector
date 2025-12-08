@@ -179,13 +179,21 @@
 <details>
 <summary><strong>2025-12-07</strong></summary>
 
-* **12-07 **: Gemini가 프리티어의 quota수를 20으로 크게 줄여서, 무료로 사용하던 API를 전혀 사용할수 없게되었다. Google Gemini API대신, 다른 AI를 활용하여 데이터를 분석하도록 변경해야한다.
+* **12-07**: Gemini가 프리티어의 quota수를 20으로 크게 줄여서, 무료로 사용하던 API를 전혀 사용할수 없게되었다. Google Gemini API대신, 다른 AI를 활용하여 데이터를 분석하도록 변경해야한다.
 * https://discuss.ai.google.dev/t/is-gemini-2-5-pro-disabled-for-free-tier/111261/2
 * https://www.reddit.com/r/Bard/comments/1pg02ni/they_removed_the_free_tier_for_25_pro_api/
 * https://gall.dcinside.com/mgallery/board/view/?id=eastfantasy&no=34475
 * https://discuss.ai.google.dev/t/do-they-really-think-we-wouldnt-notice-a-92-free-tier-quota-nerf/111262
+
+* 일시적으로 EventBridge 규칙을 비활성화 헀다.
+
 </details>
 
+<details>
+<summary><strong>2025-12-08</strong></summary>
+* EventBridge 규칙을 활성화하고, 경과를 지켜본 뒤 여전히 quota가 크게 제한되어있다면 요청 모델 Gemini에서 다른 무료모델로 바꾼다.
+* 또한, AI 모델이 고장났다고 수집이 안되는것은 좋지 않아보인다. 간단한 대/소분류, keyword 추출, topic에 따른 중요도 산정같은 새로운 예비로직이 필요할것 같다.
+</details>
 
 
 
@@ -194,6 +202,8 @@
 * 따라서, 분석 DB에 저장하는 부분을 Duck DB를 이용하여 합치고 SQL 쿼리를 날리는 형식으로 변경한다.
 * 위 과정을 거칠경우, Glue 테이블을 갱신할 필요가 없어지므로, 파티션을 갱신하는 부분을 제거한다.
 
+* 12-07에 Gemini Free tier 한도가 갑자기 제한되는 문제로인해 중요도/대/소분류판별등이 되지 않아 뉴스수집기 자체가 작동하지 않았다.
+* Gemini, 혹은 바뀔 AI모델이 작동하지 않더라도 네이버 검색 API가 다운되지 않았다면 수집되도록 조치를 취해야한다.
 
 
 
