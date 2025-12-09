@@ -101,7 +101,7 @@ class NewsClassifier:
 
             # Importance (0~10)
             imp_score = self.model_imp.predict(input_list)[0]
-            importance = int(round(max(0, min(10, imp_score))))
+            importance = int(max(0, min(10, imp_score)))
 
             # Sentiment (0.0~10.0)
             sent_score = self.model_sent.predict(input_list)[0]
