@@ -79,7 +79,7 @@ def main(is_test_mode=False): #is_test_mode: 테스트 모드 여부. 기본값�
     print("--- 💾 DynamoDB에서 군집화 비교를 위한 최신 기사를 가져옵니다. ---")
     recent_db_articles = get_recent_articles(limit=recent_articles_limit)
     print(f"--- {len(recent_db_articles)}개의 기존 기사를 가져왔습니다. ---")
-    CLUSTERING_THRESHOLD = 0.85 # 군집화 유사도 임계값 (0.0 ~ 1.0)
+    CLUSTERING_THRESHOLD = 0.77 # 군집화 유사도 임계값 (0.0 ~ 1.0)
     clustered_articles=cluster_news(recent_db_articles, analyzed_articles, threshold=CLUSTERING_THRESHOLD)
 
     # 4. Groq API 요청을 위한 임시 ID 부여 / 매개변수 : 뉴스 기사 리스트
