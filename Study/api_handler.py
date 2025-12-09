@@ -5,6 +5,7 @@ import requests
 from urllib.parse import quote
 from dotenv import load_dotenv
 from openai import OpenAI  # google.generativeai 대신 사용
+from time import sleep
 
 load_dotenv() # .env 파일에서 환경 변수 로드. 없을경우 넘어감 
 
@@ -20,7 +21,7 @@ client = OpenAI(
     base_url="https://api.groq.com/openai/v1",
     api_key=GROQ_API_KEY
 )
-GROQ_MODEL_NAME = "llama-3.3-70b-versatile"
+GROQ_MODEL_NAME = "llama-3.1-8b-instant"
 
 import requests
 from urllib.parse import quote
@@ -72,79 +73,42 @@ def naver_api_request(display_count=150):
         # 여기서는 기존 로직대로 종료 처리
         exit(1)
   
+import json
+import re
+
 def groq_api_request(articles):
-    # 전처리: 불필요한 태그 제거 및 데이터 경량화
+    # 1. 전처리
     articles_for_prompt = [
         {
-            "temp_id": item.get('temp_id', str(idx)), # temp_id가 없으면 인덱스로 대체 방어 로직
+            "temp_id": item.get('temp_id', str(idx)), 
             "title": item.get("title", "").replace("<b>", "").replace("</b>", ""),
             "description": item.get("description", "").replace("<b>", "").replace("</b>", "")
         }
         for idx, item in enumerate(articles)
     ]
 
-    # 프롬프트: JSON Mode 사용을 위해 출력 형식을 명확히 지정
+    # 2. 시스템 프롬프트 (temp_id 복사 강조)
     system_prompt = """
-    당신은 숙련된 데이터 분석가입니다. 
-    제공된 뉴스 기사 목록을 분석하여 지정된 JSON 형식으로 반환해야 합니다.
-    반드시 JSON 포맷만 출력하세요.
+    You are an expert data analyst who ALWAYS follows instructions.
+    You will be given a JSON array of news articles, each with a 'temp_id'.
+    Your task is to generate a one-sentence Korean summary ('topic') for each article and return a JSON object.
+
+    [CRITICAL RULES]
+    1. Your entire response MUST be a single, valid JSON object starting with '{'.
+    2. The JSON object must have a single key "reviews" which contains an array of objects.
+    3. For EACH object in the input array, you MUST create a corresponding object in the output "reviews" array.
+    4. Each output object MUST contain TWO keys:
+       - 'temp_id': The exact 'temp_id' copied from the input article.
+       - 'topic': The one-sentence Korean summary you generated.
+    5. DO NOT omit 'temp_id'. It is required for matching results.
+    6. Your response must NOT contain any text outside the JSON object.
     """
 
     user_prompt = f"""
-    아래 뉴스 기사 목록을 분석하여 JSON 객체를 반환하세요.
-    반환할 JSON은 반드시 {{"reviews": [...]}} 형태여야 합니다.
+    Analyze the news list below and return a single JSON object according to the rules.
 
-    ### 분석 목표 (각 기사별 항목)
-    1. **topic**: 제목/설명을 바탕으로한 간결하게 한 문장 요약 (예: "배우 이순재 별세, AGF 2025 10만명 이상 방문 흥행, 수원시 인권환경 개선")
-    2. **keywords**: 핵심 단어 3~5개 리스트
-    3. **sentiment**: 0.0(부정) ~ 10.0(긍정) 실수
-    4. **category1**: [정치, 경제, 사회, IT/과학, 문화/생활, 연예, 스포츠, 국제] 중 택 1
-    5. **category2**: 세부 카테고리 (예: 경제-금융시장, 스포츠-축구, 문화/생활-영화 등)
-    6. **importance**: 0(무가치)~10(매우중요) 정수
-            * **0점 (데이터로서 가치 없음)**:
-            - **[포토], [화보]** 등 텍스트 없이 사진만 있는 기사.
-            - 날씨 예보(태풍/지진 등 제외), 부고 알림
-            - 기사 내용이 없거나 제목만 있는 오류성 데이터.
-
-            * **1~3점 (홍보/가십/단순 기록 - 큰 의미는 없음 )**:
-            - **연예/방송**: **드라마/영화 캐스팅, 출연 확정, 티저/예고편 공개, 앨범 발매, 시청률 기사.** (유명 배우가 나와도 단순 작품 활동은 여기에 포함)
-            - **가십**: 연예인 SNS, 공항 패션, 단순 근황, 먹방/여행 예능 리뷰.
-            - **단순 홍보**: 기업/지자체의 수상, MOU 체결, 단순 행사 알림.
-
-            * **4~5점 (일반 뉴스 - 보통)**:
-            - 특정 업계의 일반적인 동향, 기업 실적 발표.
-            - 사회적 논의가 필요한 소규모 사건/사고.
-            - 대중의 관심이 있는 생활 정보나 문화 뉴스.
-
-            * **6~8점 (주요 이슈 / 중요)**:
-            - **사회적 파장**: 법안 발의/통과, 물가 상승, 부동산 정책 변화.
-            - **주목할 사건**: 인명 피해가 있는 사고, 유명인의 사망, 마약/음주운전 등 범죄 연루, 은퇴, 그룹 해체.(사회적 파장이 있는 경우)
-            - 대중의 이목이 쏠리는 논란이나 이슈.
-
-            * **9~10점 (국가적/역사적 이슈 / 매우 중요)**:
-            - **경제 충격**: 환율 급등(예: 1480원 돌파), 기준금리 대폭 변경, 주가 폭락/폭등.
-            - **국가 재난**: 전쟁(국내외 전쟁양상 변화나 전쟁발발), 대형 참사(대규모 화재, 지진, 태풍, 쓰나미 등), 전염병 대유행, 대통령 탄핵/당선.
-            - 역사에 기록될 만한 중대한 발견이나 사건.
-
-
-    ### 입력 데이터
+    Input:
     {json.dumps(articles_for_prompt, ensure_ascii=False, indent=2)}
-
-    ### 필수 출력 형식
-    {{
-        "reviews": [
-            {{
-                "temp_id": "입력된 ID 유지",
-                "topic": "요약문",
-                "keywords": ["키워드1", "키워드2"],
-                "sentiment": 5.0,
-                "category1": "경제",
-                "category2": "금융",
-                "importance": 5
-            }},
-            ...
-        ]
-    }}
     """
 
     try:
@@ -154,20 +118,66 @@ def groq_api_request(articles):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            temperature=0.3,
-            response_format={"type": "json_object"} # Groq JSON 모드 활성화
+            temperature=0.1,
         )
 
-        # 응답 파싱
         response_content = completion.choices[0].message.content
-        result_json = json.loads(response_content)
         
-        # "reviews" 키 안의 리스트를 반환
-        return result_json.get("reviews", [])
+        # 3. 강화된 JSON 추출 및 파싱
+        json_str = None
+        
+        # 시도 1: 마크다운 코드 블록 (```json ... ```) 에서 JSON 추출
+        match = re.search(r'```json\s*(\{.*?\})\s*```', response_content, re.DOTALL)
+        if match:
+            json_str = match.group(1)
+        else:
+            # 시도 2: 응답 내용 전체에서 { ... } 패턴 찾기
+            match = re.search(r'\{.*\}', response_content, re.DOTALL)
+            if match:
+                json_str = match.group()
+
+        if not json_str:
+            print("--- Groq API 응답에서 JSON 객체를 찾을 수 없습니다. ---")
+            print("API 응답 내용:", response_content)
+            return []
+
+        try:
+            result_json = json.loads(json_str)
+        except json.JSONDecodeError as e:
+            print(f"--- JSON 파싱 에러: {e} ---")
+            print("파싱 시도한 문자열:", json_str)
+            return []
+
+        # 4. 구조 확인 및 반환
+        if isinstance(result_json, dict) and "reviews" in result_json:
+            # 반환 전, 모든 리뷰에 temp_id가 있는지 추가로 확인
+            reviews = result_json.get("reviews", [])
+            if all('temp_id' in item for item in reviews):
+                print(f"--- ✅ Groq API에서 {len(reviews)}개의 토픽을 성공적으로 생성했습니다. (temp_id 포함) ---")
+                sleep(5)
+                return reviews
+            else:
+                print("--- Groq API 응답의 일부 항목에 'temp_id'가 누락되었습니다. ---")
+                print("전체 응답:", reviews)
+                # temp_id가 없는 항목을 필터링하고 반환할지, 아니면 빈 리스트를 반환할지 결정
+                # 여기서는 문제가 있는 배치를 아예 건너뛰도록 빈 리스트 반환
+                return []
+        else:
+            print("--- Groq API 응답의 JSON 구조가 예상과 다릅니다. ---")
+            print("파싱된 JSON:", result_json)
+            return []
 
     except Exception as e:
-        print(f"Groq API 호출 중 에러 발생: {e}")
-        # 디버깅을 위해 실패 시 원본 응답을 찍어볼 수 있음
-        # print(completion.choices[0].message.content) 
-        return []
+        # ⚠️ 예외 발생 시 처리 (토큰 초과, 컨텍스트 길이 초과 등)
+        print(f"\n[Warning] API 호출 실패 (사유: {e})")
+        print(">> 🚨 토큰 제한 또는 에러 발생으로 인해 '제목'을 '토픽'으로 대체합니다.")
 
+        # 2. [Fallback 로직] 제목을 토픽으로 매핑하여 반환
+        fallback_results = []
+        for article in articles:
+            fallback_results.append({
+                'temp_id': article.get('temp_id'),  # ID 유지
+                'topic': article.get('title', '제목 없음')  # 제목을 토픽으로 사용
+            })
+            
+        return fallback_results
