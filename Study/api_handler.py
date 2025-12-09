@@ -89,28 +89,29 @@ def groq_api_request(articles):
 
     # 2. 시스템 프롬프트 (temp_id 복사 강조)
     system_prompt = """
-    You are an expert data analyst who ALWAYS follows instructions.
-    You will be given a JSON array of news articles, each with a 'temp_id'.
-    Your task is to generate a one-sentence Korean summary ('topic') for each article and return a JSON object.
+    You are an expert news editor. Your task is to generate concise "headline-style" summaries (topics) for news articles.
+    
+    [CRITICAL RULES - OUTPUT FORMAT]
+    1. Output MUST be a single, valid JSON object starting with '{'.
+    2. The JSON object must contain a single key "reviews" with an array of objects.
+    3. Each object MUST have 'temp_id' (copied exactly) and 'topic'.
+    4. NO text outside the JSON object.
 
-    [CRITICAL RULES]
-    1. Your entire response MUST be a single, valid JSON object starting with '{'.
-    2. The JSON object must have a single key "reviews" which contains an array of objects.
-    3. For EACH object in the input array, you MUST create a corresponding object in the output "reviews" array.
-    4. Each output object MUST contain TWO keys:
-       - 'temp_id': The exact 'temp_id' copied from the input article.
-       - 'topic': The one-sentence Korean summary you generated.
-    5. DO NOT omit 'temp_id'. It is required for matching results.
-    6. Your response must NOT contain any text outside the JSON object.
+    [CRITICAL RULES - TOPIC STYLE]
+    1. Use **Korean**.
+    2. Use **Noun Phrase (명사형 종결)** or **Headline Style**.
+       - BAD: "삼성전자가 실적을 발표했다." (Full sentence)
+       - GOOD: "삼성전자, 3분기 실적 발표" (Noun phrase)
+       - GOOD: "비트코인 급등, 사상 최고가 경신" (Headline style)
+    3. Keep it concise (under 50 characters if possible).
     """
 
     user_prompt = f"""
-    Analyze the news list below and return a single JSON object according to the rules.
+    Analyze the news list below and return a JSON object with headline-style topics.
 
     Input:
     {json.dumps(articles_for_prompt, ensure_ascii=False, indent=2)}
     """
-
     try:
         completion = client.chat.completions.create(
             model=GROQ_MODEL_NAME,
