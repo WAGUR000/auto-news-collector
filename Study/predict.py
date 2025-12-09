@@ -7,24 +7,18 @@ from kiwipiepy import Kiwi
 # =========================================================
 # 0. 공통 Kiwi 객체 생성 (전역)
 # =========================================================
-# 함수들이 이 객체를 참조합니다.
 kiwi = Kiwi()
 
 # =========================================================
 # 1. 모델 로드용 함수/클래스 정의 (학습 때와 동일해야 함)
 # =========================================================
 
-# (A) 소분류, 감정 분석 모델이 찾을 함수
 def korean_tokenizer(text):
-    # 명사, 형용사, 어근, 외국어 등 (학습 코드 기준)
     return [t.form for t in kiwi.tokenize(text) if t.tag in ['NNG', 'NNP', 'VA', 'XR', 'MAG', 'SL']]
 
-# (B) 중요도 모델이 찾을 함수
 def importance_tokenizer(text):
-    # 명사, 어근, 숫자
     return [t.form for t in kiwi.tokenize(text) if t.tag in ['NNG', 'NNP', 'XR', 'SN']]
 
-# (C) 대분류 모델이 찾을 클래스 (만약 클래스로 학습했다면)
 class KiwiTokenizer:
     def __init__(self):
         self.kiwi = Kiwi()
@@ -46,7 +40,6 @@ class KiwiTokenizer:
 # =========================================================
 class NewsClassifier:
     def __init__(self, model_dir=None):
-        # 경로 자동 탐지 로직
         if model_dir is None:
             current_file_path = os.path.abspath(__file__)
             current_dir = os.path.dirname(current_file_path)
@@ -59,7 +52,6 @@ class NewsClassifier:
 
     def load_models(self):
         try:
-            # 각 모델 로드
             self.model_main = joblib.load(os.path.join(self.model_dir, 'main_category_model.pkl'))
             self.model_sub = joblib.load(os.path.join(self.model_dir, 'sub_category_model.pkl'))
             self.model_imp = joblib.load(os.path.join(self.model_dir, 'importance_model.pkl'))
@@ -67,12 +59,50 @@ class NewsClassifier:
             print("✅ All models loaded successfully!")
         except Exception as e:
             print(f"❌ Error loading models: {e}")
-            print("힌트: 학습할 때 사용한 tokenizer 함수가 이 파일에도 정의되어 있어야 합니다.")
-            # 에러 발생 시 더미 모델이라도 만들어 둠 (속성 에러 방지)
             self.model_main = None
 
+    def calculate_penalty(self, text):
+        """중요도 거품 제거를 위한 강력한 페널티 계산 로직"""
+        penalty = 0
+        text_str = str(text).strip()
+        
+        # 1. 길이 기반 페널티 (너무 짧거나 긴 제목은 정보가 적거나 광고성)
+        if len(text_str) < 10: 
+            penalty += 2.0  # 10자 미만 강력 감점
+        elif len(text_str) < 15:
+            penalty += 1.0
+            
+        # 2. 감성/에세이/가십성 키워드 (뉴스 가치 하락 요소)
+        low_quality_keywords = [
+            '졸업', '축하', '꽃길', '아들', '딸', '가족', '근황', '포착', 
+            '일상', '여행', '맛집', '먹방', '유튜브', '인스타', '화제', 
+            '충격', '논란', '경악', '결국', '알고보니', '눈길', '공개',
+            '티저', '포스터', '비하인드', '스틸', '예고', '선공개',
+            '화보', '포토', '직캠', '패션', '룩', '코디', '뷰티'
+        ]
+        
+        # 3. 단순 행사/알림 키워드 (중요도 하락 요소)
+        event_keywords = [
+            '개최', '성료', '진행', '참석', '모집', '선정', '수상', '표창', 
+            '기탁', '전달', '체결', 'MOU', '협약', '이벤트', '프로모션', 
+            '할인', '특가', '출시', '오픈', '기념', '소식', '게시판', '인사', '부고'
+        ]
+        
+        # 키워드 검사
+        for k in low_quality_keywords:
+            if k in text_str: penalty += 2.5
+            
+        for k in event_keywords:
+            if k in text_str: penalty += 1.5
+
+        # 4. 특수문자 과다 사용 (광고/어그로성)
+        special_chars = text_str.count('!') + text_str.count('?') + text_str.count('~')
+        if special_chars >= 2: penalty += 1.0
+
+        # 최대 6점까지만 감점
+        return min(penalty, 6.0)
+
     def predict(self, title, description):
-        # 모델 로드 실패 시 방어 로직
         if self.model_main is None:
             return {"error": "Models not loaded"}
 
@@ -91,7 +121,6 @@ class NewsClassifier:
             if hasattr(self.model_sub, "predict_proba"):
                 proba = self.model_sub.predict_proba(input_list)[0]
                 max_prob = np.max(proba)
-                # 확률이 너무 낮으면(40% 미만) '기타'로 처리
                 if max_prob < 0.4:
                     sub_cat = "기타"
                 else:
@@ -99,9 +128,12 @@ class NewsClassifier:
             else:
                 sub_cat = self.model_sub.predict(input_list)[0]
 
-            # Importance (0~10)
-            imp_score = self.model_imp.predict(input_list)[0]
-            importance = int(max(0, min(10, imp_score)))
+            # Importance (0~10) - 페널티 적용 로직 추가됨
+            raw_imp_score = self.model_imp.predict(input_list)[0]
+            penalty = self.calculate_penalty(title) # 제목 기반 페널티 계산
+            
+            final_imp_score = raw_imp_score - penalty
+            importance = int(max(0, min(10, final_imp_score))) # 0~10 범위 제한
 
             # Sentiment (0.0~10.0)
             sent_score = self.model_sent.predict(input_list)[0]
@@ -111,7 +143,8 @@ class NewsClassifier:
                 "main_category": str(main_cat),
                 "sub_category": str(sub_cat),
                 "importance": int(importance),
-                "sentiment": float(sentiment)
+                "sentiment": float(sentiment),
+                "penalty_applied": penalty # 디버깅용: 적용된 페널티 점수 확인
             }
 
         except Exception as e:
@@ -127,8 +160,8 @@ class NewsClassifier:
 # 3. 테스트 실행
 # =========================================================
 if __name__ == "__main__":
-    test_title = "삼성전자, 3분기 영업이익 '어닝 서프라이즈' 달성"
-    test_desc = "반도체 부문의 실적 개선에 힘입어 시장 예상치를 상회하는 실적을 기록했다."
+    test_title = "졸업이다" # 테스트용 저품질 제목
+    test_desc = "드디어 학교를 졸업하게 되어 기쁘다."
     
     classifier = NewsClassifier()
     result = classifier.predict(test_title, test_desc)
