@@ -57,7 +57,7 @@ def update_articles_with_topic(original_articles, groq_results):
 
             if not article.get('topic'):
                 article['topic'] = article.get('title', '')
-                print(f"⚠️ Topic 생성 실패로 제목 사용: {article['title']}")
+                print(f"⚠️ Topic 생성 실패로 제목 사용: {article['title'], article['clusterId'],article['is_representative']}")
 
             # 3. Outlet 매핑
             target_link = article.get('originallink') or article.get('link', '')
