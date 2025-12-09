@@ -36,6 +36,14 @@ def get_outlet_name(original_link):
     
 def update_articles_with_topic(original_articles, groq_results):
     # 1. 빠른 검색을 위한 Topic 맵 생성
+    requested_ids = {a['temp_id'] for a in original_articles if 'temp_id' in a}
+    received_ids = {r['temp_id'] for r in groq_results if 'temp_id' in r}
+    
+    missing_ids = requested_ids - received_ids
+    if missing_ids:
+        print(f"🚨 [치명적 오류] 요청했지만 응답받지 못한 temp_id: {missing_ids}")
+        # 여기서 missing_ids에 해당하는 기사들은 토픽 생성에 실패한 것입니다.
+    
     topic_map = {item['temp_id']: item['topic'] for item in groq_results if 'topic' in item and 'temp_id' in item}
     
     # 군집 ID별 Topic 맵 생성 (전파용)
