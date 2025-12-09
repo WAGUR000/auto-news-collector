@@ -3,17 +3,23 @@ from datetime import datetime  # [수정] 모듈 대신 클래스를 import 해�
 from urllib.parse import urlparse
 from news_organization_lists import NEWS_OUTLET_MAP
 from extract_keywords import get_keywords  
-
+import html  # 파이썬 내장 모듈
 def chunked(iterable, n): 
     """iterable을 n개씩 묶어서 반환 (Gemini/Groq API 배치 처리용)"""
     for i in range(0, len(iterable), n):
         yield iterable[i:i + n]
-
 def clean_text(text): 
-    """텍스트 정리 함수 (HTML 태그 제거 및 특수문자 변환)"""
+    """텍스트 정리 함수 (HTML 태그 제거 및 모든 특수문자 자동 변환)"""
     if not isinstance(text, str):
         return ""
-    return text.replace("<b>", "").replace("</b>", "").replace("&quot;", "\"")
+    
+    # 1. 태그 제거 (기존 방식 유지해도 무방, re 모듈 추천)
+    text = text.replace("<b>", "").replace("</b>", "")
+    
+    # 2. 모든 HTML 엔티티(&quot;, &amp;, &lt; 등) 한 방에 변환
+    text = html.unescape(text) 
+    
+    return text.strip()
 
 def get_outlet_name(original_link): 
     """

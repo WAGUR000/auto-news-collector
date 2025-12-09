@@ -5,10 +5,11 @@ from api_handler import naver_api_request, groq_api_request
 from dotenv import load_dotenv
 from aws_handler import get_recent_articles, save_data
 from clustering_news import cluster_news
-from data_processer import chunked, update_articles_with_topic
+from data_processer import chunked, update_articles_with_topic, clean_text
 from predict import NewsClassifier
 from extract_keywords import get_keywords
 from kiwipiepy import Kiwi
+
 
 # 전역 Kiwi 객체 (함수들이 참조함)
 kiwi = Kiwi()
@@ -60,18 +61,17 @@ def main(is_test_mode=False): #is_test_mode: 테스트 모드 여부. 기본값�
 
     for article in raw_articles:
         # HTML 태그 정제
-        clean_title =article.get('title', '')
-        clean_desc = article.get('description', '')
-        
-        # 모델 예측 수행 (predict.py)
+        clean_title =clean_text(article.get('title', ''))
+        clean_desc = clean_text(article.get('description', ''))
+
+        # 정제된 텍스트로 덮어쓰기
+        article['title'] = clean_title
+        article['description'] = clean_desc
+
         analysis_result = classifier.predict(clean_title, clean_desc)
         
         # 결과 업데이트 (기존 article 딕셔너리에 분석 필드 추가)
         article.update(analysis_result)
-        
-        # 정제된 텍스트로 덮어쓰기 (선택 사항, Groq 및 DB 저장을 위해 추천)
-        article['title'] = clean_title
-        article['description'] = clean_desc
         
         analyzed_articles.append(article)
 
