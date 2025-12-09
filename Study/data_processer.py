@@ -55,6 +55,10 @@ def update_articles_with_topic(original_articles, groq_results):
             if not article.get('topic') and article.get('clusterId') in cluster_topic_map:
                 article['topic'] = cluster_topic_map[article['clusterId']]
 
+            if not article.get('topic'):
+                article['topic'] = article.get('title', '')
+                print(f"⚠️ Topic 생성 실패로 제목 사용: {article['title']}")
+
             # 3. Outlet 매핑
             target_link = article.get('originallink') or article.get('link', '')
             article['outlet'] = get_outlet_name(target_link)
