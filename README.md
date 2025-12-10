@@ -216,6 +216,7 @@ Groq은 하루 제한량은 넉넉하나, 토큰 입력양에 제한이 걸려�
 *  EventBridge 규칙을 활성화 헀다.
 
 </details>
+<details>
 <summary><strong>2025-12-10</strong></summary>
 
 * **12-10**: main_category와 sub_category를 정제한 파일인 cleaned_news_data.parquet로 ML모델을 적합 시켰으나, main_category를 정제할때 문제가 발생했던걸 뒤늦게 확인했다.
