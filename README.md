@@ -213,10 +213,19 @@ Groq은 하루 제한량은 넉넉하나, 토큰 입력양에 제한이 걸려�
 * 군집화 오류가 발견되어, 임계값을 조정했다.
 
 
-* 일시적으로 EventBridge 규칙을 비활성화 헀다.
+*  EventBridge 규칙을 활성화 헀다.
 
 </details>
 
+<summary><strong>2025-12-09</strong></summary>
+
+* **12-10**: main_category와 sub_category를 정제한 파일인 cleaned_news_data.parquet로 ML모델을 적합 시켰으나, main_category를 정제할때 문제가 발생했던걸 뒤늦게 확인했다.
+* 수집데이터는 수집 로직이 정형화 되기전 데이터도 존재하기에, main_Category가 30개인 문제가 있었다. 따라서 이를 통합하는 과정이 필요했는데, 이 과정에 문제가 발생하여 문화생활이 61건이 되어버렸다. (문화/생활 수집데이터는 25259건)
+* 따라서 main_category를 제대로 통폐합한뒤, 다시 ML을 돌리고 개선된 pkl파일을 업로드해야한다.
+
+*  EventBridge 규칙을 활성화 헀다.
+
+</details>
 
 
 ### 이후 가이드라인
