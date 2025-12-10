@@ -62,45 +62,67 @@ class NewsClassifier:
             self.model_main = None
 
     def calculate_penalty(self, text):
-        """중요도 거품 제거를 위한 강력한 페널티 계산 로직"""
+        """중요도 거품 제거를 위한 강력한 페널티 계산 로직 (업데이트됨)"""
         penalty = 0
         text_str = str(text).strip()
         
-        # 1. 길이 기반 페널티 (너무 짧거나 긴 제목은 정보가 적거나 광고성)
+        # 1. 길이 기반 페널티
         if len(text_str) < 10: 
-            penalty += 2.0  # 10자 미만 강력 감점
+            penalty += 2.0
         elif len(text_str) < 15:
             penalty += 1.0
             
-        # 2. 감성/에세이/가십성 키워드 (뉴스 가치 하락 요소)
+        # 2. 감성/에세이/가십성 키워드 (기존 리스트 유지 + '직캠' 등)
         low_quality_keywords = [
             '졸업', '축하', '꽃길', '아들', '딸', '가족', '근황', '포착', 
             '일상', '여행', '맛집', '먹방', '유튜브', '인스타', '화제', 
             '충격', '논란', '경악', '결국', '알고보니', '눈길', '공개',
             '티저', '포스터', '비하인드', '스틸', '예고', '선공개',
-            '화보', '포토', '직캠', '패션', '룩', '코디', '뷰티'
+            '화보', '포토', '직캠', '패션', '룩', '코디', '뷰티',
+            '파이팅', '물오른', '여신', '남신', '자태' # (추가됨)
         ]
         
-        # 3. 단순 행사/알림 키워드 (중요도 하락 요소)
+        # 3. [신규] 연예/드라마/홍보 특화 키워드 (가장 중요!)
+        # 이 단어들이 있으면 '심각한 단어(복수, 살인)'가 있어도 픽션임을 인지하고 감점
+        entertainment_keywords = [
+            '드라마', '예능', '방송', '첫방', '본방', '사수', '줄거리', 
+            '관전포인트', '등장인물', '인물관계도', '시청률', 'OST',
+            '배우', '가수', '아이돌', '컴백', '데뷔', '소속사', '전속계약',
+            '제작발표회', '쇼케이스', '무대인사', '시사회', '레드카펫',
+            '일일드라마', '주말드라마', '수목드라마', '월화드라마'
+        ]
+
+        # 4. 단순 행사/알림 키워드
         event_keywords = [
             '개최', '성료', '진행', '참석', '모집', '선정', '수상', '표창', 
             '기탁', '전달', '체결', 'MOU', '협약', '이벤트', '프로모션', 
             '할인', '특가', '출시', '오픈', '기념', '소식', '게시판', '인사', '부고'
         ]
         
-        # 키워드 검사
+        # --- 키워드 검사 및 점수 누적 ---
+        
+        # 가십성 키워드 (건당 1.5점, 최대 3점)
+        hit_low = 0
         for k in low_quality_keywords:
-            if k in text_str: penalty += 2.5
+            if k in text_str: hit_low += 1.5
+        penalty += min(hit_low, 3.0)
             
-        for k in event_keywords:
-            if k in text_str: penalty += 1.5
+        # [핵심] 연예/드라마 키워드 (건당 2.0점, 강력 제재)
+        hit_ent = 0
+        for k in entertainment_keywords:
+            if k in text_str: hit_ent += 2.0
+        penalty += min(hit_ent, 4.0)
 
-        # 4. 특수문자 과다 사용 (광고/어그로성)
+        # 행사 키워드 (건당 1.0점)
+        for k in event_keywords:
+            if k in text_str: penalty += 1.0
+
+        # 5. 특수문자 과다 사용 (광고/어그로성)
         special_chars = text_str.count('!') + text_str.count('?') + text_str.count('~')
         if special_chars >= 2: penalty += 1.0
 
-        # 최대 6점까지만 감점
-        return min(penalty, 6.0)
+        # 최대 7점까지만 감점 (0점 방지용 min 처리는 predict에서 함)
+        return min(penalty, 7.0)
 
     def predict(self, title, description):
         if self.model_main is None:
