@@ -1,5 +1,5 @@
 # 워크플로우 이름
-name: Test_Crawl_and_Save_to_DynamoDB
+name: Test Workflow
 
 # 동시 실행 제어
 concurrency:
@@ -7,41 +7,41 @@ concurrency:
   cancel-in-progress: false
 
 on:
-  push:
-    branches: [ "main" ]
-    paths:
-      - 'Study/**.py' # Study폴더의 py파일이 push 되었을때 실행됨
+  # schedule:
+  # - cron: '*/20 * * * *'
+  repository_dispatch:
+    types: [trigger-cron-job]
 
 # 실행할 작업
 jobs:
-  Test-crawl-and-save:
-    runs-on: ubuntu-latest
+  crawl-and-save: # 작업 이름. job별로 실행환경을 초기화하므로 여러 job으로 나누면 매번 의존성 설치를 다시 해야하여 하나의 작업만 수행
+    runs-on: self-hosted
     
-    # [추가] 타임아웃: 이 작업은 10분 이상 실행되면 자동 실패합니다.
-    timeout-minutes: 10
+    # [추가] 타임아웃: 이 작업은 15분 이상 실행되면 자동 실패합니다.
+    timeout-minutes: 15
 
     steps:
     # ... (기존 steps 내용과 동일) ...
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-
-    - name: Cache pip packages
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-
-    - name: Install dependencies
+    - name: Install dependencies with venv
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+          # 가상환경이 없으면 생성 (최초 1회만 실행됨)
+          if [ ! -d "~/venv_api" ]; then
+            python3.12 -m venv ~/venv_api
+          fi
+          
+          # 가상환경 활성화
+          source ~/venv_api/bin/activate
+          
+          # pip 업그레이드 및 설치
+          # --cache-dir을 활용하면 로컬 디스크에 캐시가 남아 다음 실행이 빨라집니다.
+          pip install --upgrade pip
+          pip install psycopg2-binary
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+          pip install -r requirements.txt
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -50,7 +50,6 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ap-northeast-2
 
-    #  [추가 1] 네이버 API 상태 확인 단계
     - name: Check Naver API Status
       env:
         NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
@@ -62,19 +61,26 @@ jobs:
         curl --fail -H "X-Naver-Client-Id: ${NAVER_CLIENT_ID}" -H "X-Naver-Client-Secret: ${NAVER_CLIENT_SECRET}" \
         "https://openapi.naver.com/v1/search/news.json?query=test&display=1" > /dev/null
 
-    #  [추가 2] AWS DynamoDB 연결 확인 단계
+        
     - name: Check AWS DynamoDB Connection
       # aws cli 명령어로 테이블 정보를 읽어봅니다.
       # 이 명령이 성공하면, 자격 증명(credentials)이 유효하고 테이블에 접근 가능하다는 의미입니다.
       run: |
         aws dynamodb describe-table --table-name News_Data_v1 > /dev/null
 
-
     # 5. 최종 파이썬 스크립트를 실행합니다. 
     - name: Run Python script
-      working-directory: ./Study  
+      working-directory: ./Study 
       env:
         NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
         NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-      run: python API_GitHub_AWSDB.py --test # --test 옵션 추가하여 테스트 모드로 실행
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+        DB_USER: ${{ secrets.DB_USER }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+
+
+      run: |
+        source ~/venv_api/bin/activate
+        python API_GitHub_AWSDB.py --test

@@ -5,10 +5,12 @@ from api_handler import naver_api_request, groq_api_request
 from dotenv import load_dotenv
 from aws_handler import get_recent_articles, save_data
 from clustering_news import cluster_news
-from data_processer import chunked, update_articles_with_topic, clean_text
+from data_processer import chunked, update_articles_with_topic, clean_text, data_cleaning, bulk_insert_articles
 from predict import NewsClassifier
 from extract_keywords import get_keywords
 from kiwipiepy import Kiwi
+import psycopg2
+import os
 
 
 # 전역 Kiwi 객체 (함수들이 참조함)
@@ -106,13 +108,22 @@ def main(is_test_mode=False): #is_test_mode: 테스트 모드 여부. 기본값�
     # ★ 여기서 한 방에 처리 (Topic 병합, 전파, Outlet, PK/SK, Keyword 정제)
     # clustered_articles 전체(대표 기사 + 일반 기사)를 넘겨야 전파가 가능함
     final_articles_to_save = update_articles_with_topic(clustered_articles, all_groq_results)
+    result=data_cleaning(final_articles_to_save)
+
+    conn_postgres=psycopg2.connect(
+    host=os.environ.get("DB_HOST"),
+    database=os.environ.get("DB_NAME"),
+    user=os.environ.get("DB_USER"),
+    password=os.environ.get("DB_PASSWORD")
+    )
+    bulk_insert_articles(conn_postgres, result)
 
     # 6. 데이터 저장
-    if final_articles_to_save:
-        print(f"--- 💾 총 {len(final_articles_to_save)}개의 유효한 기사를 저장합니다. ---")
-        save_data(final_articles_to_save)
-    else:
-        print("--- 저장할 새로운 기사가 없습니다. ---")
+    # if final_articles_to_save:
+    #     print(f"--- 💾 총 {len(final_articles_to_save)}개의 유효한 기사를 저장합니다. ---")
+    #     save_data(final_articles_to_save)
+    # else:
+    #     print("--- 저장할 새로운 기사가 없습니다. ---")
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="뉴스 데이터를 수집하고 분석하여 DynamoDB에 저장합니다.")

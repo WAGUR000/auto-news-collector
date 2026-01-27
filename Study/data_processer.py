@@ -4,6 +4,14 @@ from urllib.parse import urlparse
 from news_organization_lists import NEWS_OUTLET_MAP
 from extract_keywords import get_keywords  
 import html  # 파이썬 내장 모듈
+import pandas as pd
+import os
+import json
+import numpy as np
+import csv
+from decimal import Decimal
+from psycopg2.extras import execute_values
+
 def chunked(iterable, n): 
     """iterable을 n개씩 묶어서 반환 (Gemini/Groq API 배치 처리용)"""
     for i in range(0, len(iterable), n):
@@ -136,3 +144,141 @@ def update_articles_with_topic(original_articles, groq_results):
 
     print(f"--- ✅ 처리 완료: {len(valid_articles)}건 정제됨 ---")
     return valid_articles
+
+def process_keywords(val):
+            # 1. 값이 아예 없거나 None인 경우 (단일 값 체크에 안전한 방식)
+            if val is None or (isinstance(val, float) and np.isnan(val)):
+                return json.dumps([], ensure_ascii=False)
+            
+            # 2. 이미 리스트 또는 튜플인 경우 (DynamoDB에서 가장 흔한 형태)
+            if isinstance(val, (list, tuple, np.ndarray)):
+                # 리스트 내부에 Decimal 객체가 있을 수 있으므로 일반 객체로 변환 시도
+                clean_list = [float(i) if isinstance(i, Decimal) else i for i in val]
+                return json.dumps(list(clean_list), ensure_ascii=False)
+            
+            # 3. 문자열 형태인 경우 (CSV/V4 소스 등)
+            if isinstance(val, str):
+                val = val.strip()
+                if not val or val == "[]":
+                    return json.dumps([], ensure_ascii=False)
+                try:
+                    # 기존 로직: 대괄호 제거 및 따옴표 정리
+                    s = val.strip("[]")
+                    res = [tok.strip().strip("'").strip('"') for tok in s.split(",") if tok.strip()]
+                    return json.dumps(res, ensure_ascii=False)
+                except:
+                    return json.dumps([], ensure_ascii=False)
+            
+            return json.dumps([], ensure_ascii=False)
+
+
+def data_cleaning(articles):
+    if not articles:
+        print("수집할 새로운 데이터가 없습니다.")
+    else:
+        df = pd.DataFrame(articles)
+        # 4. 데이터 전처리 (순서 중요)
+        # DynamoDB의 Decimal 타입을 float/int로 변환 (CSV 저장 시 에러 방지)
+        for col in df.columns:
+            if df[col].apply(lambda x: isinstance(x, Decimal)).any():
+                df[col] = df[col].apply(lambda x: float(x) if isinstance(x, Decimal) else x)
+
+        # 불필요 컬럼 제거 및 link 추출
+        df = df.drop(columns=['penalty_applied'], errors='ignore')
+        if 'SK' in df.columns:
+            df['link'] = df['SK'].str.split('#').str[1]
+            # SK는 나중에 pk로 변환될 PK가 있으므로 삭제
+            df = df.drop(columns=['SK'])
+
+        # 5. 핵심 로직 적용
+        # 
+        
+        # 키워드 처리 함수
+
+        if 'keywords' in df.columns:
+            df['keywords'] = df['keywords'].apply(process_keywords)
+        
+        # 설명 및 기타 결측치 처리
+        df['description'] = df['description'].fillna('')
+        df['is_representative'] = df['is_representative'].fillna(True).astype(bool)
+        # 6. 컬럼 표준화 (DB 적재용)
+        MASTER_COLUMNS = [
+            'pk', 'originallink', 'main_category', 'outlet', 'pub_date',
+            'description', 'title', 'is_representative', 'importance', 'clusterid',
+            'sub_category', 'topic', 'sentiment', 'keywords', 'link'
+        ]
+
+        def finalize_for_db(target_df):
+            # 소문자 변환 (PK -> pk, clusterId -> clusterid 등)
+            target_df.columns = [col.lower() for col in target_df.columns]
+            
+            # 누락된 컬럼 기본값 채우기
+            for col in MASTER_COLUMNS:
+                if col not in target_df.columns:
+                    target_df[col] = ""
+            
+            # 중요도(importance) 등 숫자형 기본값 보정 (필요시)
+            target_df['importance'] = pd.to_numeric(target_df['importance'], errors='coerce').fillna(0).astype(int)
+            
+            return target_df[MASTER_COLUMNS]
+
+        df = finalize_for_db(df)
+
+        # 7. 필수 식별자 없는 행 최종 제거
+        df.dropna(subset=['pk', 'link'], inplace=True)
+
+        # 8. 저장
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        save_path = os.path.join(base_dir, "tmp_articles.csv")
+
+
+
+
+def bulk_insert_articles(conn, articles):
+    """
+    articles: 기사 딕셔너리들이 담긴 리스트 (200건)
+    """
+    cur = conn.cursor()
+    
+    # 1. 튜플 리스트로 변환 (순서가 테이블 정의와 일치해야 함)
+    data_tuples = [
+        (
+            a.get('pk'), 
+            a.get('link'),
+            a.get('originallink'),
+            a.get('main_category'),
+            a.get('outlet'),
+            a.get('pub_date'),
+            a.get('description'),
+            a.get('title'),
+            a.get('is_representative', False),
+            a.get('importance', 0),
+            a.get('clusterid'),
+            a.get('sub_category'),
+            a.get('topic'),
+            a.get('sentiment', 0.0),
+            json.dumps(a.get('keywords', []))
+        ) for a in articles
+    ]
+
+    # 2. 대량 삽입 쿼리
+    query = """
+        INSERT INTO articles_table (
+            pk, link, originallink, main_category, outlet, 
+            pub_date, description, title, is_representative, 
+            importance, clusterid, sub_category, topic, 
+            sentiment, keywords
+        ) VALUES %s
+        ON CONFLICT (pk, link) DO NOTHING;
+    """
+
+    try:
+        # execute_values가 %s 위치에 (val1, val2), (val3, val4)... 를 자동으로 생성해줍니다.
+        execute_values(cur, query, data_tuples)
+        conn.commit()
+        print(f"✅ 총 {len(articles)}건 처리 완료 (중복 제외)")
+    except Exception as e:
+        conn.rollback()
+        print(f"❌ 벌크 삽입 중 에러 발생: {e}")
+    finally:
+        cur.close()

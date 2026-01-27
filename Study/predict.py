@@ -166,7 +166,7 @@ class NewsClassifier:
                 "sub_category": str(sub_cat),
                 "importance": int(importance),
                 "sentiment": float(sentiment),
-                "penalty_applied": penalty # 디버깅용: 적용된 페널티 점수 확인
+                # "penalty_applied": penalty # 디버깅용: 적용된 페널티 점수 확인
             }
 
         except Exception as e:
