@@ -108,24 +108,24 @@ def main(is_test_mode=False): #is_test_mode: 테스트 모드 여부. 기본값�
     # ★ 여기서 한 방에 처리 (Topic 병합, 전파, Outlet, PK/SK, Keyword 정제)
     # clustered_articles 전체(대표 기사 + 일반 기사)를 넘겨야 전파가 가능함
     # 이 부분을 확인하세요
-final_articles_to_save = update_articles_with_topic(clustered_articles, all_groq_results)
-result_df = data_cleaning(final_articles_to_save) # 반환값이 DataFrame임
+    final_articles_to_save = update_articles_with_topic(clustered_articles, all_groq_results)
+    result_df = data_cleaning(final_articles_to_save) # 반환값이 DataFrame임
 
-if result_df is not None and not result_df.empty:
-    try: 
-        conn_postgres = psycopg2.connect(
-            host=os.environ.get("DB_HOST"),
-            database=os.environ.get("DB_NAME"),
-            user=os.environ.get("DB_USER"),
-            password=os.environ.get("DB_PASSWORD")
-        )
-        # 중요: DataFrame을 그대로 넘기거나, 함수 내부에서 처리하게 함
-        bulk_insert_articles(conn_postgres, result_df)
-    except Exception as e:
-        print(f"⚠️ 연결 또는 실행 실패: {e}")
-    finally:
-        if 'conn_postgres' in locals():
-            conn_postgres.close()
+    if result_df is not None and not result_df.empty:
+        try: 
+            conn_postgres = psycopg2.connect(
+                host=os.environ.get("DB_HOST"),
+                database=os.environ.get("DB_NAME"),
+                user=os.environ.get("DB_USER"),
+                password=os.environ.get("DB_PASSWORD")
+            )
+            # 중요: DataFrame을 그대로 넘기거나, 함수 내부에서 처리하게 함
+            bulk_insert_articles(conn_postgres, result_df)
+        except Exception as e:
+            print(f"⚠️ 연결 또는 실행 실패: {e}")
+        finally:
+            if 'conn_postgres' in locals():
+                conn_postgres.close()
 
     # 6. 데이터 저장
     # if final_articles_to_save:
