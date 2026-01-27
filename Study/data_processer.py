@@ -228,8 +228,7 @@ def data_cleaning(articles):
         df.dropna(subset=['pk', 'link'], inplace=True)
 
         # 8. 저장
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        save_path = os.path.join(base_dir, "tmp_articles.csv")
+        return df
 
 
 
