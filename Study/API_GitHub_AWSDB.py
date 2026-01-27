@@ -132,5 +132,6 @@ if __name__ == "__main__":
         action='store_true', 
         help='스크립트를 테스트 모드로 실행합니다. (2개 기사만 처리)'
     )
+    
     args = parser.parse_args()
     main(is_test_mode=args.test)
