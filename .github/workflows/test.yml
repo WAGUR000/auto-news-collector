@@ -7,11 +7,10 @@ concurrency:
   cancel-in-progress: false
 
 on:
-  # schedule:
-  # - cron: '*/20 * * * *'
-  repository_dispatch:
-    types: [trigger-cron-job]
-
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'Study/**.py' # Study폴더의 py파일이 push 되었을때 실행됨
 # 실행할 작업
 jobs:
   crawl-and-save: # 작업 이름. job별로 실행환경을 초기화하므로 여러 job으로 나누면 매번 의존성 설치를 다시 해야하여 하나의 작업만 수행
