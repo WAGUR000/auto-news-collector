@@ -15,7 +15,7 @@ on:
 # 실행할 작업
 jobs:
   crawl-and-save: # 작업 이름. job별로 실행환경을 초기화하므로 여러 job으로 나누면 매번 의존성 설치를 다시 해야하여 하나의 작업만 수행
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     
     # [추가] 타임아웃: 이 작업은 15분 이상 실행되면 자동 실패합니다.
     timeout-minutes: 15
@@ -25,24 +25,22 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-
-    - name: Cache pip packages
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-
-    - name: Install dependencies
+    - name: Install dependencies with venv
       run: |
-        python -m pip install --upgrade pip
-        pip install torch --index-url https://download.pytorch.org/whl/cpu
-        pip install -r requirements.txt
+          # 가상환경이 없으면 생성 (최초 1회만 실행됨)
+          if [ ! -d "~/venv_api" ]; then
+            python3.12 -m venv ~/venv_api
+          fi
+          
+          # 가상환경 활성화
+          source ~/venv_api/bin/activate
+          
+          # pip 업그레이드 및 설치
+          # --cache-dir을 활용하면 로컬 디스크에 캐시가 남아 다음 실행이 빨라집니다.
+          pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+          pip install -r requirements.txt
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -71,9 +69,11 @@ jobs:
 
     # 5. 최종 파이썬 스크립트를 실행합니다. 
     - name: Run Python script
-      working-directory: ./Study  
+      working-directory: ./Study 
       env:
         NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
         NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-      run: python API_GitHub_AWSDB.py 
+      run: |
+        source ~/venv_api/bin/activate
+        python API_GitHub_AWSDB.py
