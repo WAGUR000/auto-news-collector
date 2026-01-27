@@ -232,15 +232,23 @@ def data_cleaning(articles):
 
 
 
-
-def bulk_insert_articles(conn, articles):
+def bulk_insert_articles(conn, articles_df):
     """
-    articles: 기사 딕셔너리들이 담긴 리스트 (200건)
+    articles_df: Pandas DataFrame (data_cleaning의 결과물)
     """
     print("--- 📝 PostgreSQL 벌크 삽입 시작 ---")
+    
+    # 1. 만약 리스트로 들어왔다면 다시 DF로 변환하거나, 
+    # 여기서는 메인에서 리스트로 변환해서 넘긴다고 가정하고 처리합니다.
+    if isinstance(articles_df, pd.DataFrame):
+        data_list = articles_df.to_dict('records')
+    else:
+        data_list = articles_df
+
     cur = conn.cursor()
     
-    # 1. 튜플 리스트로 변환 (순서가 테이블 정의와 일치해야 함)
+    # 2. 튜플 리스트로 변환 (순서 주의: SQL문의 컬럼 순서와 일치해야 함)
+    # data_cleaning에서 이미 lowercase 처리가 되었으므로 키 값은 소문자입니다.
     data_tuples = [
         (
             a.get('pk'), 
@@ -252,16 +260,15 @@ def bulk_insert_articles(conn, articles):
             a.get('description'),
             a.get('title'),
             a.get('is_representative', False),
-            a.get('importance', 0),
+            int(a.get('importance', 0)), # smallint 대응
             a.get('clusterid'),
             a.get('sub_category'),
             a.get('topic'),
-            a.get('sentiment', 0.0),
-            json.dumps(a.get('keywords', []))
-        ) for a in articles
+            float(a.get('sentiment', 0.0)),
+            a.get('keywords') # data_cleaning에서 이미 json.dumps 문자열로 변환됨
+        ) for a in data_list
     ]
 
-    # 2. 대량 삽입 쿼리
     query = """
         INSERT INTO articles_table (
             pk, link, originallink, main_category, outlet, 
@@ -269,16 +276,20 @@ def bulk_insert_articles(conn, articles):
             importance, clusterid, sub_category, topic, 
             sentiment, keywords
         ) VALUES %s
-        ON CONFLICT (pk, link) DO NOTHING;
+        ON CONFLICT (pk, link) DO UPDATE SET
+            topic = EXCLUDED.topic,
+            sentiment = EXCLUDED.sentiment,
+            importance = EXCLUDED.importance,
+            keywords = EXCLUDED.keywords;
     """
 
     try:
-        # execute_values가 %s 위치에 (val1, val2), (val3, val4)... 를 자동으로 생성해줍니다.
         execute_values(cur, query, data_tuples)
         conn.commit()
-        print(f"✅ 총 {len(articles)}건 처리 완료 (중복 제외)")
+        print(f"✅ 총 {len(data_tuples)}건 처리 완료 (중복 업데이트 포함)")
     except Exception as e:
         conn.rollback()
         print(f"❌ 벌크 삽입 중 에러 발생: {e}")
+        raise e # 에러를 다시 던져서 로그에 찍히게 함
     finally:
         cur.close()
