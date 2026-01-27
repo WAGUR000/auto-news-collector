@@ -109,13 +109,17 @@ def main(is_test_mode=False): #is_test_mode: 테스트 모드 여부. 기본값�
     # clustered_articles 전체(대표 기사 + 일반 기사)를 넘겨야 전파가 가능함
     final_articles_to_save = update_articles_with_topic(clustered_articles, all_groq_results)
     result=data_cleaning(final_articles_to_save)
+    try: 
+        conn_postgres=psycopg2.connect(
+        host=os.environ.get("DB_HOST"),
+        database=os.environ.get("DB_NAME"),
+        user=os.environ.get("DB_USER"),
+        password=os.environ.get("DB_PASSWORD")
+        )
+    except Exception as e:
+        print(f"⚠️ PostgreSQL 연결 실패: {e}")
+        return None
 
-    conn_postgres=psycopg2.connect(
-    host=os.environ.get("DB_HOST"),
-    database=os.environ.get("DB_NAME"),
-    user=os.environ.get("DB_USER"),
-    password=os.environ.get("DB_PASSWORD")
-    )
     bulk_insert_articles(conn_postgres, result)
 
     # 6. 데이터 저장
@@ -132,6 +136,6 @@ if __name__ == "__main__":
         action='store_true', 
         help='스크립트를 테스트 모드로 실행합니다. (2개 기사만 처리)'
     )
-    
+
     args = parser.parse_args()
     main(is_test_mode=args.test)
