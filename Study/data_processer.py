@@ -226,7 +226,7 @@ def data_cleaning(articles):
 
         # 7. 필수 식별자 없는 행 최종 제거
         df.dropna(subset=['pk', 'link'], inplace=True)
-
+        print(df.info())
         # 8. 저장
         return df
 
@@ -237,6 +237,7 @@ def bulk_insert_articles(conn, articles):
     """
     articles: 기사 딕셔너리들이 담긴 리스트 (200건)
     """
+    print("--- 📝 PostgreSQL 벌크 삽입 시작 ---")
     cur = conn.cursor()
     
     # 1. 튜플 리스트로 변환 (순서가 테이블 정의와 일치해야 함)
