@@ -5,8 +5,13 @@ from collections import defaultdict
 
 # 모델 로드 (전역 혹은 클래스 내부)
 MODEL_NAME = 'jhgan/ko-sroberta-multitask'
+MODEL_PATH = './saved_model/ko-sroberta-multitask'
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-sbert_model = SentenceTransformer(MODEL_NAME, device=device)
+try:
+    sbert_model = SentenceTransformer(MODEL_PATH, device=device)
+except:
+    sbert_model = SentenceTransformer(MODEL_NAME, device=device)
+    sbert_model.save("./saved_model/ko-sroberta-multitask")
 
 def cluster_news(recent_db_articles, processed_articles_for_db, threshold=0.75):
     """

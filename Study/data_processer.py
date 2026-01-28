@@ -293,3 +293,4 @@ def bulk_insert_articles(conn, articles_df):
         raise e # 에러를 다시 던져서 로그에 찍히게 함
     finally:
         cur.close()
+        
