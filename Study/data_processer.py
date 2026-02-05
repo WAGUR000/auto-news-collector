@@ -12,6 +12,56 @@ import csv
 from decimal import Decimal
 from psycopg2.extras import execute_values
 
+def get_recent_articles_postgres(conn, limit=100):
+    """PostgreSQL에서 최신 기사 'limit'개를 가져옵니다."""
+    import pendulum
+    try:
+        today_str = pendulum.now('Asia/Seoul').to_date_string()
+        yesterday_str = pendulum.now('Asia/Seoul').subtract(days=1).to_date_string()
+
+        cur = conn.cursor()
+
+        # 오늘과 어제 기사를 pub_date 기준 최신순으로 조회
+        query = """
+            SELECT pk, link, originallink, main_category, outlet,
+                   pub_date, description, title, is_representative,
+                   importance, clusterid, sub_category, topic,
+                   sentiment, keywords
+            FROM articles_table
+            WHERE pk IN (%s, %s)
+            ORDER BY pub_date DESC
+            LIMIT %s;
+        """
+        cur.execute(query, (today_str, yesterday_str, limit))
+        rows = cur.fetchall()
+        cur.close()
+
+        # 컬럼명과 매핑하여 딕셔너리 리스트로 변환
+        columns = ['PK', 'link', 'originallink', 'main_category', 'outlet',
+                   'pub_date', 'description', 'title', 'is_representative',
+                   'importance', 'clusterId', 'sub_category', 'topic',
+                   'sentiment', 'keywords']
+
+        items = []
+        for row in rows:
+            item = dict(zip(columns, row))
+            # keywords가 JSON 문자열이면 파싱
+            if isinstance(item.get('keywords'), str):
+                try:
+                    item['keywords'] = json.loads(item['keywords'])
+                except:
+                    item['keywords'] = []
+            # SK 생성 (군집화에서 필요할 수 있음)
+            item['SK'] = f"{item.get('pub_date', '')}#{item.get('link', '')}"
+            items.append(item)
+
+        print(f"--- PostgreSQL에서 {len(items)}개의 기사를 가져왔습니다. ---")
+        return items
+
+    except Exception as e:
+        print(f"PostgreSQL에서 최근 기사를 가져오는 중 에러 발생: {e}")
+        return []
+
 def chunked(iterable, n): 
     """iterable을 n개씩 묶어서 반환 (Gemini/Groq API 배치 처리용)"""
     for i in range(0, len(iterable), n):

@@ -3,9 +3,9 @@ from datetime import datetime
 import argparse
 from api_handler import naver_api_request, groq_api_request
 from dotenv import load_dotenv
-from aws_handler import get_recent_articles, save_data
+from aws_handler import save_data
 from clustering_news import cluster_news
-from data_processer import chunked, update_articles_with_topic, clean_text, data_cleaning, bulk_insert_articles
+from data_processer import chunked, update_articles_with_topic, clean_text, data_cleaning, bulk_insert_articles, get_recent_articles_postgres
 from predict import NewsClassifier
 from extract_keywords import get_keywords
 from kiwipiepy import Kiwi
@@ -78,8 +78,21 @@ def main(is_test_mode=False): #is_test_mode: 테스트 모드 여부. 기본값�
         analyzed_articles.append(article)
 
     # 3. 군집화
-    print("--- 💾 DynamoDB에서 군집화 비교를 위한 최신 기사를 가져옵니다. ---")
-    recent_db_articles = get_recent_articles(limit=recent_articles_limit)
+    # PostgreSQL 연결 생성 (군집화 조회 및 저장에 재사용)
+    conn_postgres = None
+    try:
+        conn_postgres = psycopg2.connect(
+            host=os.environ.get("DB_HOST"),
+            database=os.environ.get("DB_NAME"),
+            user=os.environ.get("DB_USER"),
+            password=os.environ.get("DB_PASSWORD")
+        )
+    except Exception as e:
+        print(f"⚠️ PostgreSQL 연결 실패: {e}")
+        return
+
+    print("--- 💾 PostgreSQL에서 군집화 비교를 위한 최신 기사를 가져옵니다. ---")
+    recent_db_articles = get_recent_articles_postgres(conn_postgres, limit=recent_articles_limit)
     print(f"--- {len(recent_db_articles)}개의 기존 기사를 가져왔습니다. ---")
     CLUSTERING_THRESHOLD = 0.77 # 군집화 유사도 임계값 (0.0 ~ 1.0)
     clustered_articles=cluster_news(recent_db_articles, analyzed_articles, threshold=CLUSTERING_THRESHOLD)
@@ -121,20 +134,15 @@ def main(is_test_mode=False): #is_test_mode: 테스트 모드 여부. 기본값�
     result_df = data_cleaning(final_articles_to_save) # 반환값이 DataFrame임
 
     if result_df is not None and not result_df.empty:
-        try: 
-            conn_postgres = psycopg2.connect(
-                host=os.environ.get("DB_HOST"),
-                database=os.environ.get("DB_NAME"),
-                user=os.environ.get("DB_USER"),
-                password=os.environ.get("DB_PASSWORD")
-            )
+        try:
             # 중요: DataFrame을 그대로 넘기거나, 함수 내부에서 처리하게 함
             bulk_insert_articles(conn_postgres, result_df)
         except Exception as e:
-            print(f"⚠️ 연결 또는 실행 실패: {e}")
-        finally:
-            if 'conn_postgres' in locals():
-                conn_postgres.close()
+            print(f"⚠️ 저장 실패: {e}")
+
+    # PostgreSQL 연결 종료
+    if conn_postgres:
+        conn_postgres.close()
 
     
 if __name__ == "__main__":
