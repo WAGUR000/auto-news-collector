@@ -14,3 +14,5 @@ __pycache__/
 # IDE 및 에디터 설정 파일 (VSCode, PyCharm 등)
 .vscode/
 .idea/
+
+Study/models/t5-model/

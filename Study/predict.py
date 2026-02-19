@@ -1,8 +1,9 @@
 import os
 import joblib
-import pandas as pd
 import numpy as np
 from kiwipiepy import Kiwi
+import torch
+from transformers import T5ForConditionalGeneration, AutoTokenizer
 
 # =========================================================
 # 0. 공통 Kiwi 객체 생성 (전역)
@@ -179,15 +180,97 @@ class NewsClassifier:
             }
 
 # =========================================================
-# 3. 테스트 실행
+# 3. T5 헤드라인 생성기
+# =========================================================
+class T5HeadlineGenerator:
+    def __init__(self, model_dir=None):
+        if model_dir is None:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            model_dir = os.path.join(current_dir, 'models', 't5-model')
+
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        print(f"Loading T5 model from: {model_dir} (device: {self.device})")
+
+        try:
+            self.tokenizer = AutoTokenizer.from_pretrained(model_dir)
+            self.model = T5ForConditionalGeneration.from_pretrained(model_dir).to(self.device)
+            self.model.eval()
+            print("✅ T5 model loaded successfully!")
+        except Exception as e:
+            print(f"❌ Error loading T5 model: {e}")
+            self.model = None
+            self.tokenizer = None
+
+    def generate(self, text, max_new_tokens=64, num_beams=4):
+        if self.model is None:
+            return ""
+        try:
+            inputs = self.tokenizer(
+                "summarize: " + text,
+                return_tensors="pt",
+                max_length=512,
+                truncation=True
+            ).to(self.device)
+
+            with torch.no_grad():
+                output_ids = self.model.generate(
+                    **inputs,
+                    max_new_tokens=max_new_tokens,
+                    num_beams=num_beams,
+                    early_stopping=True
+                )
+
+            return self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
+        except Exception as e:
+            print(f"⚠️ T5 generation failed: {e}")
+            return ""
+
+    def generate_batch(self, texts, max_new_tokens=64, num_beams=4):
+        """여러 기사를 한 번에 처리합니다."""
+        if self.model is None:
+            return [""] * len(texts)
+
+        prefixed = ["summarize: " + t for t in texts]
+        try:
+            inputs = self.tokenizer(
+                prefixed,
+                return_tensors="pt",
+                max_length=512,
+                truncation=True,
+                padding=True
+            ).to(self.device)
+
+            with torch.no_grad():
+                output_ids = self.model.generate(
+                    **inputs,
+                    max_new_tokens=max_new_tokens,
+                    num_beams=num_beams,
+                    early_stopping=True
+                )
+
+            return [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in output_ids]
+        except Exception as e:
+            print(f"⚠️ T5 batch generation failed: {e}")
+            return [""] * len(texts)
+
+
+# =========================================================
+# 4. 테스트 실행
 # =========================================================
 if __name__ == "__main__":
-    test_title = "졸업이다" # 테스트용 저품질 제목
+    test_title = "졸업이다"
     test_desc = "드디어 학교를 졸업하게 되어 기쁘다."
-    
+
     classifier = NewsClassifier()
     result = classifier.predict(test_title, test_desc)
-    
     print("\n--- 분석 결과 ---")
     print(f"제목: {test_title}")
     print(f"결과: {result}")
+
+    t5_title = "삼성전자, 3분기 영업이익 10조 돌파"
+    t5_desc = "삼성전자가 올해 3분기 영업이익이 10조원을 넘어섰다고 발표했다. 반도체 부문 회복과 스마트폰 판매 호조가 주요 원인으로 분석된다."
+    t5 = T5HeadlineGenerator()
+    headline = t5.generate(t5_title + " " + t5_desc)
+    print("\n--- T5 헤드라인 생성 결과 ---")
+    print(f"입력: {t5_title} / {t5_desc}")
+    print(f"생성된 헤드라인: {headline}")

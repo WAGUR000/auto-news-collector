@@ -6,6 +6,7 @@ from urllib.parse import quote
 from dotenv import load_dotenv
 from openai import OpenAI  # google.generativeai 대신 사용
 from time import sleep
+from predict import T5HeadlineGenerator
 
 load_dotenv() # .env 파일에서 환경 변수 로드. 없을경우 넘어감 
 
@@ -21,6 +22,7 @@ client = OpenAI(
     base_url="https://api.groq.com/openai/v1",
     api_key=GROQ_API_KEY
 )
+t5_generator = T5HeadlineGenerator()
 GROQ_MODEL_NAME = "llama-3.1-8b-instant"
 
 import requests
@@ -171,14 +173,7 @@ def groq_api_request(articles):
     except Exception as e:
         # ⚠️ 예외 발생 시 처리 (토큰 초과, 컨텍스트 길이 초과 등)
         print(f"\n[Warning] API 호출 실패 (사유: {e})")
-        print(">> 🚨 토큰 제한 또는 에러 발생으로 인해 '제목'을 '토픽'으로 대체합니다.")
-
-        # 2. [Fallback 로직] 제목을 토픽으로 매핑하여 반환
-        fallback_results = []
-        for article in articles:
-            fallback_results.append({
-                'temp_id': article.get('temp_id'),  # ID 유지
-                'topic': article.get('title', '제목 없음')  # 제목을 토픽으로 사용
-            })
-            
-        return fallback_results
+        print(">> 🚨 토큰 제한 또는 에러 발생으로 인해, T5 모델을 사용하여 topic을 생성합니다.")
+        texts = [a.get("title", "") + " " + a.get("description", "") for a in articles]
+        topics = t5_generator.generate_batch(texts, max_new_tokens=64, num_beams=4)
+        return [{'temp_id': a.get('temp_id'), 'topic': t} for a, t in zip(articles, topics)]
