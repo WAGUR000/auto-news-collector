@@ -202,7 +202,12 @@ class T5HeadlineGenerator:
                 # transformers 구버전 호환성 문제 시 tokenizer.json 직접 로드
                 from transformers import PreTrainedTokenizerFast
                 tokenizer_file = os.path.join(model_dir, 'tokenizer.json')
-                self.tokenizer = PreTrainedTokenizerFast(tokenizer_file=tokenizer_file)
+                self.tokenizer = PreTrainedTokenizerFast(
+                    tokenizer_file=tokenizer_file,
+                    pad_token="<pad>",
+                    eos_token="</s>",
+                    unk_token="<pad>",
+                )
             self.model = T5ForConditionalGeneration.from_pretrained(model_dir, local_files_only=True).to(self.device)
             self.model.eval()
             print("✅ T5 model loaded successfully!")
