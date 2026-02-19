@@ -4,7 +4,7 @@ import numpy as np
 import traceback
 from kiwipiepy import Kiwi
 import torch
-from transformers import T5ForConditionalGeneration, T5Tokenizer
+from transformers import T5ForConditionalGeneration, AutoTokenizer
 from pathlib import Path
 
 # =========================================================
@@ -196,10 +196,7 @@ class T5HeadlineGenerator:
         print(f"Loading T5 model from: {model_dir} (device: {self.device})")
 
         try:
-            # from_pretrained이 fast tokenizer 경로로 잘못 라우팅되는 버그를 우회하기 위해
-            # spiece.model 파일을 직접 로드합니다.
-            spiece_path = os.path.join(model_dir, 'spiece.model')
-            self.tokenizer = T5Tokenizer(vocab_file=spiece_path)
+            self.tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=True, use_fast=True)
             self.model = T5ForConditionalGeneration.from_pretrained(model_dir, local_files_only=True).to(self.device)
             self.model.eval()
             print("✅ T5 model loaded successfully!")
