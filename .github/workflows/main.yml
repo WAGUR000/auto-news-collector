@@ -28,7 +28,7 @@ jobs:
     - name: Link T5 model
       run: |
         mkdir -p $GITHUB_WORKSPACE/Study/models
-        ln -sfn ~/models/t5-model $GITHUB_WORKSPACE/Study/models/t5-model
+        ln -sfn ~/t5-model $GITHUB_WORKSPACE/Study/models/t5-model
 
     - name: Install dependencies with venv
       run: |

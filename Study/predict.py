@@ -4,6 +4,7 @@ import numpy as np
 from kiwipiepy import Kiwi
 import torch
 from transformers import T5ForConditionalGeneration, AutoTokenizer
+from pathlib import Path
 
 # =========================================================
 # 0. 공통 Kiwi 객체 생성 (전역)
@@ -189,6 +190,8 @@ class T5HeadlineGenerator:
             model_dir = os.path.join(current_dir, 'models', 't5-model')
 
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        # symlink인 경우 실제 경로로 변환 (transformers의 repo_id 검증 우회)
+        model_dir = str(Path(model_dir).resolve())
         print(f"Loading T5 model from: {model_dir} (device: {self.device})")
 
         try:
