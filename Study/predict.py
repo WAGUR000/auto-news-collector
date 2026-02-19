@@ -256,9 +256,13 @@ class T5HeadlineGenerator:
                     early_stopping=True
                 )
 
-            return [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in output_ids]
+            results = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in output_ids]
+            print(f"🔍 T5 sample output (first 2): {results[:2]}")
+            print(f"🔍 T5 raw token IDs (first item): {output_ids[0].tolist()[:20]}")
+            return results
         except Exception as e:
             print(f"⚠️ T5 batch generation failed: {e}")
+            print(traceback.format_exc())
             return [""] * len(texts)
 
 
