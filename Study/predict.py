@@ -1,4 +1,5 @@
 import os
+import re
 import joblib
 import numpy as np
 import traceback
@@ -217,12 +218,33 @@ class T5HeadlineGenerator:
             self.model = None
             self.tokenizer = None
 
+    @staticmethod
+    def _preprocess(text):
+        """T5 학습 데이터와 동일한 전처리를 적용합니다."""
+        if not isinstance(text, str):
+            return ""
+        # 1. URL 제거
+        text = re.sub(r"https?://\S+", "", text)
+        # 2. 저작권 문구 처리
+        text = re.sub(r"[ⓒ©]\s?\S+\s?", "", text, count=1)
+        text = re.sub(r"무단.{0,3}(전재|복제|배포).{0,30}$", "", text)
+        text = re.sub(r"※?\S+뉴스는 여러분의.{0,50}", "", text)
+        # 3. 이메일 제거
+        text = re.sub(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", "", text)
+        # 4. 기자/특파원 바이라인 제거
+        text = re.sub(r"\s?[가-힣]{2,4}\s?(기자|특파원)\s*$", "", text)
+        # 5. [...] 대괄호 태그 제거
+        text = re.sub(r"\[.*?\]", "", text)
+        # 6. 다중 공백 정리
+        text = re.sub(r"\s+", " ", text).strip()
+        return text
+
     def generate(self, text, max_new_tokens=64, num_beams=4):
         if self.model is None:
             return ""
         try:
             inputs = self.tokenizer(
-                "summarize: " + text,
+                "summarize: " + self._preprocess(text),
                 return_tensors="pt",
                 max_length=512,
                 truncation=True
@@ -246,7 +268,7 @@ class T5HeadlineGenerator:
         if self.model is None:
             return [""] * len(texts)
 
-        prefixed = ["summarize: " + t for t in texts]
+        prefixed = ["summarize: " + self._preprocess(t) for t in texts]
         try:
             inputs = self.tokenizer(
                 prefixed,
