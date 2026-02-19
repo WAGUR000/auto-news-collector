@@ -192,8 +192,8 @@ class T5HeadlineGenerator:
         print(f"Loading T5 model from: {model_dir} (device: {self.device})")
 
         try:
-            self.tokenizer = AutoTokenizer.from_pretrained(model_dir)
-            self.model = T5ForConditionalGeneration.from_pretrained(model_dir).to(self.device)
+            self.tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=True)
+            self.model = T5ForConditionalGeneration.from_pretrained(model_dir, local_files_only=True).to(self.device)
             self.model.eval()
             print("✅ T5 model loaded successfully!")
         except Exception as e:
