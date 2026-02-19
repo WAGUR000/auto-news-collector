@@ -196,7 +196,11 @@ class T5HeadlineGenerator:
         print(f"Loading T5 model from: {model_dir} (device: {self.device})")
 
         try:
-            self.tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=True, use_fast=True)
+            try:
+                self.tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=True, use_fast=True)
+            except Exception:
+                # transformers 버전 호환성 문제 시 slow tokenizer 시도
+                self.tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=True, use_fast=False)
             self.model = T5ForConditionalGeneration.from_pretrained(model_dir, local_files_only=True).to(self.device)
             self.model.eval()
             print("✅ T5 model loaded successfully!")
