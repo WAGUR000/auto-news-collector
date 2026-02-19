@@ -24,6 +24,11 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Link T5 model
+      run: |
+        mkdir -p $GITHUB_WORKSPACE/Study/models
+        ln -sfn ~/models/t5-model $GITHUB_WORKSPACE/Study/models/t5-model
+
     - name: Install dependencies with venv
       run: |
           # 가상환경이 없으면 생성 (최초 1회만 실행됨)

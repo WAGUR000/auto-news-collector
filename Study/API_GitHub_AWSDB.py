@@ -143,7 +143,7 @@ def main(is_test_mode=False): #is_test_mode: 테스트 모드 여부. 기본값�
     # PostgreSQL 연결 종료
     if conn_postgres:
         conn_postgres.close()
-
+ 
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="뉴스 데이터를 수집하고 분석하여 DynamoDB에 저장합니다.")
