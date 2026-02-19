@@ -5,6 +5,7 @@ pendulum
 openai
 python-dotenv
 sentence-transformers
+transformers>=4.46.3
 scikit-learn
 dirtyjson
 kiwipiepy

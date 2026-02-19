@@ -199,8 +199,10 @@ class T5HeadlineGenerator:
             try:
                 self.tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=True, use_fast=True)
             except Exception:
-                # transformers 버전 호환성 문제 시 slow tokenizer 시도
-                self.tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=True, use_fast=False)
+                # transformers 구버전 호환성 문제 시 tokenizer.json 직접 로드
+                from transformers import PreTrainedTokenizerFast
+                tokenizer_file = os.path.join(model_dir, 'tokenizer.json')
+                self.tokenizer = PreTrainedTokenizerFast(tokenizer_file=tokenizer_file)
             self.model = T5ForConditionalGeneration.from_pretrained(model_dir, local_files_only=True).to(self.device)
             self.model.eval()
             print("✅ T5 model loaded successfully!")
