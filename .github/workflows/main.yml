@@ -24,6 +24,8 @@ jobs:
     # ... (기존 steps 내용과 동일) ...
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        clean: false  # gitignore 파일(t5-model 등)을 삭제하지 않음
 
     - name: Install dependencies with venv
       run: |
