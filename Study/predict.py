@@ -1,6 +1,7 @@
 import os
 import joblib
 import numpy as np
+import traceback
 from kiwipiepy import Kiwi
 import torch
 from transformers import T5ForConditionalGeneration, AutoTokenizer
@@ -201,6 +202,7 @@ class T5HeadlineGenerator:
             print("✅ T5 model loaded successfully!")
         except Exception as e:
             print(f"❌ Error loading T5 model: {e}")
+            print(traceback.format_exc())
             self.model = None
             self.tokenizer = None
 
