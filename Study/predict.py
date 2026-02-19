@@ -4,7 +4,7 @@ import numpy as np
 import traceback
 from kiwipiepy import Kiwi
 import torch
-from transformers import T5ForConditionalGeneration, AutoTokenizer
+from transformers import T5ForConditionalGeneration, T5Tokenizer
 from pathlib import Path
 
 # =========================================================
@@ -196,7 +196,7 @@ class T5HeadlineGenerator:
         print(f"Loading T5 model from: {model_dir} (device: {self.device})")
 
         try:
-            self.tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=True)
+            self.tokenizer = T5Tokenizer.from_pretrained(model_dir, local_files_only=True)
             self.model = T5ForConditionalGeneration.from_pretrained(model_dir, local_files_only=True).to(self.device)
             self.model.eval()
             print("✅ T5 model loaded successfully!")
