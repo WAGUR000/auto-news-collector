@@ -8,6 +8,7 @@ from clustering_news import cluster_news
 from data_processer import chunked, update_articles_with_topic, clean_text, data_cleaning, bulk_insert_articles, get_recent_articles_postgres
 from predict import NewsClassifier
 from extract_keywords import get_keywords
+from article_crawler import crawl_articles
 from kiwipiepy import Kiwi
 import psycopg2
 import os
@@ -57,6 +58,10 @@ def main(is_test_mode=False): #is_test_mode: 테스트 모드 여부. 기본값�
 
     # 1. 네이버 뉴스 API 호출 /  매개변수 : 표시할 뉴스 개수
     raw_articles = naver_api_request(display_count=display_count)
+
+    # 1-1. originallink 크롤링 (본문 전문 + 대표 이미지)
+    raw_articles = crawl_articles(raw_articles)
+
     classifier = NewsClassifier()
     # 2. LM기반 중요도, 감정분석, 대/소분류
     analyzed_articles = [] # 분석이 완료된 기사를 담을 리스트

@@ -82,9 +82,10 @@ def groq_api_request(articles):
     # 1. 전처리
     articles_for_prompt = [
         {
-            "temp_id": item.get('temp_id', str(idx)), 
+            "temp_id": item.get('temp_id', str(idx)),
             "title": item.get("title", "").replace("<b>", "").replace("</b>", ""),
-            "description": item.get("description", "").replace("<b>", "").replace("</b>", "")
+            # body(크롤링 본문)가 있으면 우선 사용, 없으면 description fallback
+            "description": (item.get("body") or item.get("description", "")).replace("<b>", "").replace("</b>", "")
         }
         for idx, item in enumerate(articles)
     ]
@@ -174,6 +175,13 @@ def groq_api_request(articles):
         # ⚠️ 예외 발생 시 처리 (토큰 초과, 컨텍스트 길이 초과 등)
         print(f"\n[Warning] API 호출 실패 (사유: {e})")
         print(">> 🚨 토큰 제한 또는 에러 발생으로 인해, T5 모델을 사용하여 topic을 생성합니다.")
-        texts = [a.get("title", "") + " " + a.get("description", "") for a in articles]
+        # T5는 짧은 description으로 학습되었으므로, body의 앞 3문장만 사용 (분포 유지)
+        def _truncate_body(article):
+            body = article.get("body") or ""
+            if body:
+                sentences = [s.strip() for s in body.split(".") if s.strip()]
+                body = ". ".join(sentences[:3])
+            return article.get("title", "") + " " + (body or article.get("description", ""))
+        texts = [_truncate_body(a) for a in articles]
         topics = t5_generator.generate_batch(texts, max_new_tokens=64, num_beams=4)
         return [{'temp_id': a.get('temp_id'), 'topic': t} for a, t in zip(articles, topics)]

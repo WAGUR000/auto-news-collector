@@ -255,7 +255,8 @@ def data_cleaning(articles):
         MASTER_COLUMNS = [
             'pk', 'originallink', 'main_category', 'outlet', 'pub_date',
             'description', 'title', 'is_representative', 'importance', 'clusterid',
-            'sub_category', 'topic', 'sentiment', 'keywords', 'link'
+            'sub_category', 'topic', 'sentiment', 'keywords', 'link',
+            'image_url', 'body'
         ]
 
         def finalize_for_db(target_df):
@@ -301,7 +302,7 @@ def bulk_insert_articles(conn, articles_df):
     # data_cleaning에서 이미 lowercase 처리가 되었으므로 키 값은 소문자입니다.
     data_tuples = [
         (
-            a.get('pk'), 
+            a.get('pk'),
             a.get('link'),
             a.get('originallink'),
             a.get('main_category'),
@@ -315,22 +316,26 @@ def bulk_insert_articles(conn, articles_df):
             a.get('sub_category'),
             a.get('topic'),
             float(a.get('sentiment', 0.0)),
-            a.get('keywords') # data_cleaning에서 이미 json.dumps 문자열로 변환됨
+            a.get('keywords'), # data_cleaning에서 이미 json.dumps 문자열로 변환됨
+            a.get('image_url'),
+            a.get('body'),
         ) for a in data_list
     ]
 
     query = """
         INSERT INTO articles_table (
-            pk, link, originallink, main_category, outlet, 
-            pub_date, description, title, is_representative, 
-            importance, clusterid, sub_category, topic, 
-            sentiment, keywords
+            pk, link, originallink, main_category, outlet,
+            pub_date, description, title, is_representative,
+            importance, clusterid, sub_category, topic,
+            sentiment, keywords, image_url, body
         ) VALUES %s
         ON CONFLICT (pk, link) DO UPDATE SET
             topic = EXCLUDED.topic,
             sentiment = EXCLUDED.sentiment,
             importance = EXCLUDED.importance,
-            keywords = EXCLUDED.keywords;
+            keywords = EXCLUDED.keywords,
+            image_url = EXCLUDED.image_url,
+            body = EXCLUDED.body;
     """
 
     try:
