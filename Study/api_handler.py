@@ -65,7 +65,7 @@ def naver_api_request(display_count=150):
                 break
                 
             # 연속 호출 시 네이버 서버 부하 방지 및 차단 예방을 위한 아주 짧은 대기
-            time.sleep(0.1)
+            time.sleep(1)
 
         return all_articles
 
