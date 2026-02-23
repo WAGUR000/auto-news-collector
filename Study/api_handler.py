@@ -60,8 +60,8 @@ def naver_api_request(display_count=150):
             # 결과 리스트에 추가
             all_articles.extend(items)
             
-            # 검색 결과가 요청한 것보다 적으면 조기 종료 (예: 검색 결과가 총 5개뿐인 경우)
-            if len(items) < query_display:
+            # 검색 결과가 없으면 조기 종료 (마지막 페이지 도달)
+            if not items:
                 break
                 
             # 연속 호출 시 네이버 서버 부하 방지 및 차단 예방을 위한 아주 짧은 대기
