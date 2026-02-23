@@ -256,17 +256,17 @@ def data_cleaning(articles):
             'pk', 'originallink', 'main_category', 'outlet', 'pub_date',
             'description', 'title', 'is_representative', 'importance', 'clusterid',
             'sub_category', 'topic', 'sentiment', 'keywords', 'link',
-            'image_url', 'body'
+            'image_url', 'body', 'embedding'
         ]
 
         def finalize_for_db(target_df):
             # 소문자 변환 (PK -> pk, clusterId -> clusterid 등)
             target_df.columns = [col.lower() for col in target_df.columns]
-            
+
             # 누락된 컬럼 기본값 채우기
             for col in MASTER_COLUMNS:
                 if col not in target_df.columns:
-                    target_df[col] = ""
+                    target_df[col] = None if col == 'embedding' else ""
             
             # 중요도(importance) 등 숫자형 기본값 보정 (필요시)
             target_df['importance'] = pd.to_numeric(target_df['importance'], errors='coerce').fillna(0).astype(int)
@@ -283,13 +283,20 @@ def data_cleaning(articles):
 
 
 
+def _format_embedding(emb):
+    """embedding 리스트를 pgvector가 파싱할 수 있는 문자열로 변환합니다."""
+    if not emb:
+        return None
+    return '[' + ','.join(str(v) for v in emb) + ']'
+
+
 def bulk_insert_articles(conn, articles_df):
     """
     articles_df: Pandas DataFrame (data_cleaning의 결과물)
     """
     print("--- 📝 PostgreSQL 벌크 삽입 시작 ---")
-    
-    # 1. 만약 리스트로 들어왔다면 다시 DF로 변환하거나, 
+
+    # 1. 만약 리스트로 들어왔다면 다시 DF로 변환하거나,
     # 여기서는 메인에서 리스트로 변환해서 넘긴다고 가정하고 처리합니다.
     if isinstance(articles_df, pd.DataFrame):
         data_list = articles_df.to_dict('records')
@@ -297,7 +304,7 @@ def bulk_insert_articles(conn, articles_df):
         data_list = articles_df
 
     cur = conn.cursor()
-    
+
     # 2. 튜플 리스트로 변환 (순서 주의: SQL문의 컬럼 순서와 일치해야 함)
     # data_cleaning에서 이미 lowercase 처리가 되었으므로 키 값은 소문자입니다.
     data_tuples = [
@@ -319,6 +326,7 @@ def bulk_insert_articles(conn, articles_df):
             a.get('keywords'), # data_cleaning에서 이미 json.dumps 문자열로 변환됨
             a.get('image_url'),
             a.get('body'),
+            _format_embedding(a.get('embedding')),
         ) for a in data_list
     ]
 
@@ -327,7 +335,7 @@ def bulk_insert_articles(conn, articles_df):
             pk, link, originallink, main_category, outlet,
             pub_date, description, title, is_representative,
             importance, clusterid, sub_category, topic,
-            sentiment, keywords, image_url, body
+            sentiment, keywords, image_url, body, embedding
         ) VALUES %s
         ON CONFLICT (pk, link) DO UPDATE SET
             topic = EXCLUDED.topic,
@@ -335,11 +343,15 @@ def bulk_insert_articles(conn, articles_df):
             importance = EXCLUDED.importance,
             keywords = EXCLUDED.keywords,
             image_url = EXCLUDED.image_url,
-            body = EXCLUDED.body;
+            body = EXCLUDED.body,
+            embedding = EXCLUDED.embedding;
     """
 
+    # embedding 컬럼은 문자열을 vector 타입으로 캐스팅해야 하므로 template 명시
+    _TUPLE_TEMPLATE = "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::vector)"
+
     try:
-        execute_values(cur, query, data_tuples)
+        execute_values(cur, query, data_tuples, template=_TUPLE_TEMPLATE)
         conn.commit()
         print(f"✅ 총 {len(data_tuples)}건 처리 완료 (중복 업데이트 포함)")
     except Exception as e:

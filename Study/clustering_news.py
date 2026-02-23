@@ -1,7 +1,23 @@
+import re
 import torch
 from sentence_transformers import SentenceTransformer, util
 import uuid
 from collections import defaultdict
+
+
+def _preprocess(text):
+    """임베딩 전 노이즈 제거 (boilerplate, 바이라인, 태그 등)"""
+    if not isinstance(text, str):
+        return ""
+    text = re.sub(r"https?://\S+", "", text)
+    text = re.sub(r"[ⓒ©]\s?\S+\s?", "", text, count=1)
+    text = re.sub(r"무단.{0,3}(전재|복제|배포).{0,30}$", "", text)
+    text = re.sub(r"※?\S+뉴스는 여러분의.{0,50}", "", text)
+    text = re.sub(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", "", text)
+    text = re.sub(r"\s?[가-힣]{2,4}\s?(기자|특파원)\s*$", "", text)
+    text = re.sub(r"\[.*?\]", "", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
 
 # 모델 로드 (전역 혹은 클래스 내부)
 MODEL_NAME = 'jhgan/ko-sroberta-multitask'
@@ -36,18 +52,24 @@ def cluster_news(recent_db_articles, processed_articles_for_db, threshold=0.75):
         
         current_articles = [all_articles[i] for i in indices]
         
-        # 임베딩 텍스트 구성: Topic이 없으면 Title + Description 사용
+        # 임베딩 텍스트 구성: title + description 원문 사용
         corpus = []
         for a in current_articles:
-            # 기존 DB 기사는 Topic이 있을 수 있으므로 활용
-            if a.get('topic') and len(a['topic']) > 2:
-                text = f"{a['topic']} {a['title']}"
+            body = a.get('body') or ''
+            if body:
+                raw = f"{a['title']} {body[:100]} {body[-100:]}"
             else:
-                text = f"{a['title']} {a.get('description', '')[:100]}"
-            corpus.append(text)
-        
+                raw = f"{a['title']} {a.get('description', '')}"
+            corpus.append(_preprocess(raw))
+
         # 임베딩 및 군집화
         embeddings = sbert_model.encode(corpus, convert_to_tensor=True, show_progress_bar=False)
+
+        # 임베딩 벡터를 각 기사 딕셔너리에 저장
+        emb_list = embeddings.cpu().numpy().tolist()
+        for local_i, global_i in enumerate(indices):
+            all_articles[global_i]['embedding'] = emb_list[local_i]
+
         clusters = util.community_detection(embeddings, min_community_size=1, threshold=threshold)
         
         for cluster in clusters:

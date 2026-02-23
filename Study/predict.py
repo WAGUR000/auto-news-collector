@@ -128,14 +128,18 @@ class NewsClassifier:
         # 최대 7점까지만 감점 (0점 방지용 min 처리는 predict에서 함)
         return min(penalty, 7.0)
 
-    def predict(self, title, description):
+    def predict(self, title, description, body=None):
         if self.model_main is None:
             return {"error": "Models not loaded"}
 
         # 1. 전처리
         title = str(title) if title else ""
-        desc = str(description) if description else ""
-        input_text = title + " " + desc
+        body_str = str(body) if body else ""
+        if body_str:
+            input_text = f"{title} {body_str[:100]} {body_str[-100:]}"
+        else:
+            desc = str(description) if description else ""
+            input_text = f"{title} {desc}"
         input_list = [input_text]
 
         # 2. 예측 수행
