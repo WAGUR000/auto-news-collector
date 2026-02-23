@@ -48,12 +48,18 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements.txt
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ap-northeast-2
+    # DynamoDB를 사용하지 않으므로, AWS 확인을 진행하지 않음
+    # - name: Configure AWS credentials
+    #   uses: aws-actions/configure-aws-credentials@v4
+    #   with:
+    #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    #     aws-region: ap-northeast-2
+    # - name: Check AWS DynamoDB Connection
+    #   # aws cli 명령어로 테이블 정보를 읽어봅니다.
+    #   # 이 명령이 성공하면, 자격 증명(credentials)이 유효하고 테이블에 접근 가능하다는 의미입니다.
+    #   run: |
+    #     aws dynamodb describe-table --table-name News_Data_v1 > /dev/null
 
     - name: Check Naver API Status
       env:
@@ -66,13 +72,7 @@ jobs:
         curl --fail -H "X-Naver-Client-Id: ${NAVER_CLIENT_ID}" -H "X-Naver-Client-Secret: ${NAVER_CLIENT_SECRET}" \
         "https://openapi.naver.com/v1/search/news.json?query=test&display=1" > /dev/null
 
-        
-    - name: Check AWS DynamoDB Connection
-      # aws cli 명령어로 테이블 정보를 읽어봅니다.
-      # 이 명령이 성공하면, 자격 증명(credentials)이 유효하고 테이블에 접근 가능하다는 의미입니다.
-      run: |
-        aws dynamodb describe-table --table-name News_Data_v1 > /dev/null
-
+      
     # 5. 최종 파이썬 스크립트를 실행합니다. 
     - name: Run Python script
       working-directory: ./Study 
@@ -88,4 +88,4 @@ jobs:
 
       run: |
         source ~/venv_api/bin/activate
-        python API_GitHub_AWSDB.py
+        python articles_collection.py

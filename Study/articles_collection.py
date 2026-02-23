@@ -125,11 +125,13 @@ def main(is_test_mode=False): #is_test_mode: 테스트 모드 여부. 기본값�
 
 
     # 6. 데이터 저장
-    if final_articles_to_save:
-        print(f"--- 💾 총 {len(final_articles_to_save)}개의 유효한 기사를 저장합니다. ---")
-        save_data(final_articles_to_save)
-    else:
-        print("--- 저장할 새로운 기사가 없습니다. ---")
+
+    # 더이상 DynamoDB에 저장하지 않음
+    # if final_articles_to_save:
+    #     print(f"--- 💾 총 {len(final_articles_to_save)}개의 유효한 기사를 저장합니다. ---")
+    #     save_data(final_articles_to_save)
+    # else:
+    #     print("--- 저장할 새로운 기사가 없습니다. ---")
 
     result_df = data_cleaning(final_articles_to_save) # 반환값이 DataFrame임
 
