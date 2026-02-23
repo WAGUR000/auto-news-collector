@@ -52,23 +52,27 @@ def cluster_news(recent_db_articles, processed_articles_for_db, threshold=0.75):
         
         current_articles = [all_articles[i] for i in indices]
         
-        # 임베딩 텍스트 구성: title + description 원문 사용
-        corpus = []
-        for a in current_articles:
-            body = a.get('body') or ''
-            if body:
-                raw = f"{a['title']} {body[:100]} {body[-100:]}"
-            else:
-                raw = f"{a['title']} {a.get('description', '')}"
-            corpus.append(_preprocess(raw))
+        # 임베딩 준비: DB에서 가져온 기사는 저장된 벡터 재사용, 신규 기사만 인코딩
+        to_encode_idx = []
+        to_encode_texts = []
 
-        # 임베딩 및 군집화
-        embeddings = sbert_model.encode(corpus, convert_to_tensor=True, show_progress_bar=False)
+        for local_i, a in enumerate(current_articles):
+            if not isinstance(a.get('embedding'), list):
+                body = a.get('body') or ''
+                if body:
+                    raw = f"{a['title']} {body[:100]} {body[-100:]}"
+                else:
+                    raw = f"{a['title']} {a.get('description', '')}"
+                to_encode_idx.append(local_i)
+                to_encode_texts.append(_preprocess(raw))
 
-        # 임베딩 벡터를 각 기사 딕셔너리에 저장
-        emb_list = embeddings.cpu().numpy().tolist()
-        for local_i, global_i in enumerate(indices):
-            all_articles[global_i]['embedding'] = emb_list[local_i]
+        if to_encode_texts:
+            new_embs = sbert_model.encode(to_encode_texts, convert_to_tensor=False, show_progress_bar=False)
+            for local_i, emb in zip(to_encode_idx, new_embs):
+                current_articles[local_i]['embedding'] = emb.tolist()
+
+        # 전체 임베딩 텐서 구성 (DB 벡터 + 신규 벡터 혼합)
+        embeddings = torch.tensor([a['embedding'] for a in current_articles], dtype=torch.float32).to(device)
 
         clusters = util.community_detection(embeddings, min_community_size=1, threshold=threshold)
         

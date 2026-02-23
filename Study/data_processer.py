@@ -26,7 +26,7 @@ def get_recent_articles_postgres(conn, limit=100):
             SELECT pk, link, originallink, main_category, outlet,
                    pub_date, description, title, is_representative,
                    importance, clusterid, sub_category, topic,
-                   sentiment, keywords
+                   sentiment, keywords, embedding
             FROM articles_table
             WHERE pk IN (%s, %s)
             ORDER BY pub_date DESC
@@ -40,7 +40,7 @@ def get_recent_articles_postgres(conn, limit=100):
         columns = ['PK', 'link', 'originallink', 'main_category', 'outlet',
                    'pub_date', 'description', 'title', 'is_representative',
                    'importance', 'clusterId', 'sub_category', 'topic',
-                   'sentiment', 'keywords']
+                   'sentiment', 'keywords', 'embedding']
 
         items = []
         for row in rows:
@@ -51,6 +51,12 @@ def get_recent_articles_postgres(conn, limit=100):
                     item['keywords'] = json.loads(item['keywords'])
                 except:
                     item['keywords'] = []
+            # embedding이 문자열(pgvector 텍스트 형식 '[v1,v2,...]')이면 리스트로 파싱
+            if isinstance(item.get('embedding'), str):
+                try:
+                    item['embedding'] = [float(x) for x in item['embedding'].strip('[]').split(',')]
+                except:
+                    item['embedding'] = None
             # SK 생성 (군집화에서 필요할 수 있음)
             item['SK'] = f"{item.get('pub_date', '')}#{item.get('link', '')}"
             items.append(item)
