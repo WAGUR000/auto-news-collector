@@ -44,7 +44,7 @@ def crawl_articles(articles, max_workers=10):
     to_crawl = {
         i: article["originallink"]
         for i, article in enumerate(articles)
-        if article.get("originallink")
+        if article.get("originallink")  # originallink 없는 기사(네이버뉴스 원문)는 제외
     }
     print(f"--- 🌐 원문 크롤링 시작: 전체 {len(articles)}건 중 {len(to_crawl)}건 대상 ---")
 
