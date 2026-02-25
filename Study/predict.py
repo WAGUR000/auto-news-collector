@@ -13,6 +13,29 @@ from pathlib import Path
 # =========================================================
 kiwi = Kiwi()
 
+
+def _preprocess(text):
+    """노이즈 제거 전처리 (clustering_news.py와 동일한 패턴)"""
+    if not isinstance(text, str):
+        return ""
+    text = re.sub(r"■\s*제보하기.*", "", text, flags=re.DOTALL)
+    text = re.sub(r"▷\s*(카카오톡|전화|이메일).*", "", text)
+    text = re.sub(r"기사 본문 영역", "", text)
+    text = re.sub(r"읽어주기 기능은 크롬기반의\s*브라우저에서만.*", "", text)
+    text = re.sub(r"이 기사가 좋으셨다면.*", "", text, flags=re.DOTALL)
+    text = re.sub(r"오늘의 핫 클릭.*", "", text, flags=re.DOTALL)
+    text = re.sub(r"\[사진 출처.*?\]", "", text)
+    text = re.sub(r"https?://\S+", "", text)
+    text = re.sub(r"[ⓒ©]\s?\S+\s?", "", text, count=1)
+    text = re.sub(r"무단.{0,3}(전재|복제|배포).{0,30}$", "", text)
+    text = re.sub(r"※?\S+뉴스는 여러분의.{0,50}", "", text)
+    text = re.sub(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", "", text)
+    text = re.sub(r"\s?[가-힣]{2,4}\s?(기자|특파원)\s*$", "", text)
+    text = re.sub(r"\[.*?\]", "", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
 # =========================================================
 # 1. 모델 로드용 함수/클래스 정의 (학습 때와 동일해야 함)
 # =========================================================
@@ -136,11 +159,11 @@ class NewsClassifier:
         title = str(title) if title else ""
         body_str = str(body) if body else ""
         if body_str:
-            input_text = f"{title} {body_str[:100]} {body_str[-100:]}"
+            raw = f"{title} {_preprocess(body_str)[:400]}"
         else:
             desc = str(description) if description else ""
-            input_text = f"{title} {desc}"
-        input_list = [input_text]
+            raw = f"{title} {desc}"
+        input_list = [_preprocess(raw)]
 
         # 2. 예측 수행
         try:
@@ -224,24 +247,7 @@ class T5HeadlineGenerator:
 
     @staticmethod
     def _preprocess(text):
-        """T5 학습 데이터와 동일한 전처리를 적용합니다."""
-        if not isinstance(text, str):
-            return ""
-        # 1. URL 제거
-        text = re.sub(r"https?://\S+", "", text)
-        # 2. 저작권 문구 처리
-        text = re.sub(r"[ⓒ©]\s?\S+\s?", "", text, count=1)
-        text = re.sub(r"무단.{0,3}(전재|복제|배포).{0,30}$", "", text)
-        text = re.sub(r"※?\S+뉴스는 여러분의.{0,50}", "", text)
-        # 3. 이메일 제거
-        text = re.sub(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", "", text)
-        # 4. 기자/특파원 바이라인 제거
-        text = re.sub(r"\s?[가-힣]{2,4}\s?(기자|특파원)\s*$", "", text)
-        # 5. [...] 대괄호 태그 제거
-        text = re.sub(r"\[.*?\]", "", text)
-        # 6. 다중 공백 정리
-        text = re.sub(r"\s+", " ", text).strip()
-        return text
+        return _preprocess(text)
 
     def generate(self, text, max_new_tokens=64, num_beams=4):
         if self.model is None:
