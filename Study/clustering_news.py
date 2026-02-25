@@ -9,6 +9,13 @@ def _preprocess(text):
     """임베딩 전 노이즈 제거 (boilerplate, 바이라인, 태그 등)"""
     if not isinstance(text, str):
         return ""
+    text = re.sub(r"■\s*제보하기.*", "", text, flags=re.DOTALL) # 제보하기 이후 전체 삭제
+    text = re.sub(r"▷\s*(카카오톡|전화|이메일).*", "", text)
+    text = re.sub(r"기사 본문 영역", "", text)
+    text = re.sub(r"읽어주기 기능은 크롬기반의\s*브라우저에서만.*", "", text)
+    text = re.sub(r"이 기사가 좋으셨다면.*", "", text, flags=re.DOTALL)
+    text = re.sub(r"오늘의 핫 클릭.*", "", text, flags=re.DOTALL)
+    text = re.sub(r"\[사진 출처.*?\]", "", text) # 사진 출처 제거
     text = re.sub(r"https?://\S+", "", text)
     text = re.sub(r"[ⓒ©]\s?\S+\s?", "", text, count=1)
     text = re.sub(r"무단.{0,3}(전재|복제|배포).{0,30}$", "", text)
@@ -60,7 +67,8 @@ def cluster_news(recent_db_articles, processed_articles_for_db, threshold=0.75):
             if not isinstance(a.get('embedding'), list):
                 body = a.get('body') or ''
                 if body:
-                    raw = f"{a['title']} {body[:100]} {body[-100:]}"
+                    clean_body = _preprocess(body)
+                    raw = f"{a['title']} {clean_body[:400]}"
                 else:
                     raw = f"{a['title']} {a.get('description', '')}"
                 to_encode_idx.append(local_i)
